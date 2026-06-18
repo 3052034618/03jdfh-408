@@ -10,7 +10,8 @@ import dayjs from 'dayjs'
 const RecordsPage: React.FC = () => {
   const { records, puzzles, reuseHistoryPuzzle, setPendingReview, setCurrentPuzzle, getRecordsByPuzzle } = usePuzzleStore()
   const [filter, setFilter] = useState<'all' | 'good' | 'normal'>('all')
-  const [viewMode, setViewMode] = useState<'records' | 'puzzles'>('records')
+  const [viewMode, setViewMode] = useState<'records' | 'puzzles' | 'aggregated'>('records')
+  const [expandedAggId, setExpandedAggId] = useState<string | null>(null)
 
   const filteredRecords = records.filter(r => {
     if (filter === 'all') return true
@@ -23,6 +24,58 @@ const RecordsPage: React.FC = () => {
     const rs = getRecordsByPuzzle(p.id)
     return rs.length > 0 && rs.reduce((s, r) => s + r.rating, 0) / rs.length >= 4
   })
+
+  const aggregatedStats = (() => {
+    const byPuzzle: Record<string, typeof records> = {}
+    records.forEach(r => {
+      if (!byPuzzle[r.puzzleId]) byPuzzle[r.puzzleId] = []
+      byPuzzle[r.puzzleId].push(r)
+    })
+
+    return Object.entries(byPuzzle).map(([pid, rs]) => {
+      const total = rs.length
+      const avgR = rs.reduce((s, r) => s + r.rating, 0) / total
+      const avgD = rs.reduce((s, r) => s + (r.duration || 30), 0) / total
+
+      const misunderstandCounter: Record<string, number> = {}
+      const reactionCounter: Record<string, number> = {}
+      const hintCounter: Record<number, number> = { 1: 0, 2: 0, 3: 0 }
+
+      rs.forEach(r => {
+        if (r.mostMisunderstood && r.mostMisunderstood !== '无') {
+          r.mostMisunderstood.split(/[；;，,。\n]/).forEach(phrase => {
+            const p = phrase.trim()
+            if (p) misunderstandCounter[p] = (misunderstandCounter[p] || 0) + 1
+          })
+        }
+        r.horrorReactions.forEach(rea => {
+          reactionCounter[rea] = (reactionCounter[rea] || 0) + 1
+        })
+        r.hintsUsed.forEach(lv => { hintCounter[lv] = (hintCounter[lv] || 0) + 1 })
+      })
+
+      const topMisunderstood = Object.entries(misunderstandCounter)
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
+      const topReactions = Object.entries(reactionCounter)
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
+
+      let verdict: 'recommend' | 'warning' | 'normal' = 'normal'
+      if (avgR >= 4 && total >= 2) verdict = 'recommend'
+      else if (avgR <= 2.5 || total >= 3 && avgR <= 2.8) verdict = 'warning'
+
+      return {
+        puzzleId: pid,
+        puzzle: puzzles.find(p => p.id === pid),
+        total,
+        avgRating: avgR,
+        avgDuration: Math.round(avgD),
+        topMisunderstood,
+        topReactions,
+        hintCounter,
+        verdict
+      }
+    }).sort((a, b) => b.total - a.total)
+  })()
 
   const stats = {
     totalGames: records.length,
@@ -39,13 +92,22 @@ const RecordsPage: React.FC = () => {
 
   const handleReusePuzzle = (puzzleId: string, puzzleTitle: string) => {
     Taro.showActionSheet({
-      itemList: ['直接开始本场游戏', '先查看谜题详情', '仅复制配置到生成器'],
+      itemList: [
+        '确认道具后复开（推荐）',
+        '直接开始（用原配置）',
+        '查看谜题详情',
+        '仅复制配置到生成器'
+      ],
       success: (res) => {
+        if (res.tapIndex === 0) {
+          Taro.navigateTo({ url: `/pages/puzzle-reuse/index?puzzleId=${puzzleId}` })
+          return
+        }
         reuseHistoryPuzzle(puzzleId)
         setTimeout(() => {
-          if (res.tapIndex === 0) {
+          if (res.tapIndex === 1) {
             Taro.switchTab({ url: '/pages/prompter/index' })
-          } else if (res.tapIndex === 1) {
+          } else if (res.tapIndex === 2) {
             Taro.navigateTo({ url: '/pages/puzzle-detail/index' })
           } else {
             Taro.switchTab({ url: '/pages/generator/index' })
@@ -124,6 +186,12 @@ const RecordsPage: React.FC = () => {
           onClick={() => setViewMode('records')}
         >
           历史场次 ({records.length})
+        </View>
+        <View
+          className={classnames(styles.toggleItem, { [styles.active]: viewMode === 'aggregated' })}
+          onClick={() => setViewMode('aggregated')}
+        >
+          按谜题聚合 ({aggregatedStats.length})
         </View>
         <View
           className={classnames(styles.toggleItem, { [styles.active]: viewMode === 'puzzles' })}
@@ -263,6 +331,242 @@ const RecordsPage: React.FC = () => {
                   </View>
                 </View>
               ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {viewMode === 'aggregated' && (
+        <View className={styles.section}>
+          <Text className={styles.sectionTitle}>按谜题聚合分析（多场数据合并）</Text>
+          {aggregatedStats.length === 0 ? (
+            <View className={styles.emptyState}>
+              <Text className={styles.emptyIcon}>📊</Text>
+              <Text className={styles.emptyText}>还没有聚合数据</Text>
+              <Text className={styles.emptyHint}>等有多场复盘记录后可以在这里对比各谜题表现</Text>
+            </View>
+          ) : (
+            <View className={styles.recordList}>
+              {aggregatedStats.map(agg => {
+                const isOpen = expandedAggId === agg.puzzleId
+                const hintTotal = agg.hintCounter[1] + agg.hintCounter[2] + agg.hintCounter[3]
+                return (
+                  <View
+                    key={agg.puzzleId}
+                    className={classnames(styles.recordCard, {
+                      [styles.cardRecommend]: agg.verdict === 'recommend',
+                      [styles.cardWarning]: agg.verdict === 'warning'
+                    })}
+                  >
+                    <View
+                      onClick={() => setExpandedAggId(isOpen ? null : agg.puzzleId)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <View className={styles.recordHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text className={styles.recordTitle}>
+                            {agg.puzzle?.title || '（谜题数据未保存）'}
+                          </Text>
+                          <Text style={{ fontSize: '22rpx', color: '#555566', marginTop: '4rpx' }}>
+                            {agg.puzzle?.theme || '未知主题'} · 共 {agg.total} 场
+                          </Text>
+                        </View>
+                        <View style={{ textAlign: 'right', minWidth: 100 }}>
+                          <Text
+                            style={{
+                              fontSize: '32rpx',
+                              fontWeight: 'bold',
+                              color: agg.avgRating >= 4 ? '#00ff88' : agg.avgRating <= 2.5 ? '#e94560' : '#ffaa00'
+                            }}
+                          >
+                            ⭐ {agg.avgRating.toFixed(1)}
+                          </Text>
+                          <Text style={{ fontSize: '20rpx', color: '#555566', display: 'block' }}>
+                            {agg.verdict === 'recommend' && '✅ 强烈推荐'}
+                            {agg.verdict === 'warning' && '⚠️ 建议优化'}
+                            {agg.verdict === 'normal' && '— 表现中等'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className={styles.recordMeta}>
+                        <View className={styles.metaItem}>
+                          <Text className={styles.metaLabel}>平均用时：</Text>
+                          <Text className={styles.metaValue}>{agg.avgDuration}分钟</Text>
+                        </View>
+                        <View className={styles.metaItem}>
+                          <Text className={styles.metaLabel}>总场次：</Text>
+                          <Text className={styles.metaValue}>{agg.total}场</Text>
+                        </View>
+                        <View className={styles.metaItem}>
+                          <Text className={styles.metaLabel}>总提示：</Text>
+                          <Text className={styles.metaValue}>
+                            {hintTotal}次 / 场均{(hintTotal / Math.max(1, agg.total)).toFixed(1)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ textAlign: 'right', marginTop: '8rpx' }}>
+                        <Text style={{ color: '#00ff88', fontSize: '24rpx' }}>
+                          {isOpen ? '收起详情 ▲' : '展开分析详情 ▼'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {isOpen && (
+                      <View style={{
+                        marginTop: '24rpx',
+                        paddingTop: '24rpx',
+                        borderTop: '1px dashed rgba(255,255,255,0.08)'
+                      }}>
+                        {agg.topMisunderstood.length > 0 && (
+                          <View style={{ marginBottom: 24 }}>
+                            <Text style={{
+                              fontSize: 26,
+                              color: '#e0e0e0',
+                              fontWeight: 'bold',
+                              marginBottom: 12,
+                              display: 'block'
+                            }}>🔍 高频误解（{agg.topMisunderstood.reduce((s, m) => s + m[1], 0)}次）</Text>
+                            <View style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                              {agg.topMisunderstood.map(([phrase, count]) => (
+                                <View key={phrase} style={{
+                                  padding: '8rpx 16rpx',
+                                  background: 'rgba(233, 69, 96, 0.1)',
+                                  border: '1px solid rgba(233, 69, 96, 0.3)',
+                                  borderRadius: 16,
+                                  fontSize: 22,
+                                  color: '#ff9aab'
+                                }}>
+                                  ×{count} {phrase}
+                                </View>
+                              ))}
+                            </View>
+                            <Text style={{ fontSize: 20, color: '#555566', marginTop: 8, display: 'block' }}>
+                              下次生成会自动避开或改写以上表达
+                            </Text>
+                          </View>
+                        )}
+
+                        {agg.topReactions.length > 0 && (
+                          <View style={{ marginBottom: 24 }}>
+                            <Text style={{
+                              fontSize: 26,
+                              color: '#e0e0e0',
+                              fontWeight: 'bold',
+                              marginBottom: 12,
+                              display: 'block'
+                            }}>👻 恐怖反应分布（{agg.topReactions.reduce((s, r) => s + r[1], 0)}次）</Text>
+                            <View style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                              {agg.topReactions.map(([rea, count]) => {
+                                const weakList = ['笑场', '快速解谜', '无恐怖反应', '玩家觉得不吓人', '主动催进度', '闲聊摆烂', '恐怖场景笑场', '吐槽机关低级']
+                                const isWeak = weakList.includes(rea)
+                                return (
+                                  <View key={rea} style={{
+                                    padding: '8rpx 16rpx',
+                                    background: isWeak ? 'rgba(255, 159, 67, 0.1)' : 'rgba(0, 255, 136, 0.08)',
+                                    border: `1px solid ${isWeak ? 'rgba(255,159,67,0.35)' : 'rgba(0,255,136,0.3)'}`,
+                                    borderRadius: 16,
+                                    fontSize: 22,
+                                    color: isWeak ? '#ff9f43' : '#00ff88'
+                                  }}>
+                                    {isWeak ? '⚠️' : '💀'} ×{count} {rea}
+                                  </View>
+                                )
+                              })}
+                            </View>
+                          </View>
+                        )}
+
+                        {hintTotal > 0 && (
+                          <View style={{ marginBottom: 24 }}>
+                            <Text style={{
+                              fontSize: 26,
+                              color: '#e0e0e0',
+                              fontWeight: 'bold',
+                              marginBottom: 12,
+                              display: 'block'
+                            }}>💡 各级提示使用情况</Text>
+                            <View style={{ display: 'flex', gap: 16 }}>
+                              {[1, 2, 3].map(level => {
+                                const c = agg.hintCounter[level] || 0
+                                const pct = Math.round(c / Math.max(1, agg.total) * 100)
+                                const labels = ['一级杂音', '二级关键词', '三级直接指向']
+                                return (
+                                  <View key={level} style={{
+                                    flex: 1,
+                                    padding: 16,
+                                    background: '#1a1a2e',
+                                    borderRadius: 12,
+                                    border: `1px solid ${c > 0 ? 'rgba(0,255,136,0.3)' : '#2a2a3e'}`
+                                  }}>
+                                    <Text style={{
+                                      fontSize: 28,
+                                      fontWeight: 'bold',
+                                      color: c > 0 ? '#00ff88' : '#555566',
+                                      display: 'block',
+                                      textAlign: 'center'
+                                    }}>{c}次</Text>
+                                    <Text style={{
+                                      fontSize: 20,
+                                      color: '#888899',
+                                      display: 'block',
+                                      textAlign: 'center',
+                                      marginTop: 4
+                                    }}>{labels[level - 1]}</Text>
+                                    <Text style={{
+                                      fontSize: 20,
+                                      color: c >= agg.total ? '#e94560' : '#555566',
+                                      display: 'block',
+                                      textAlign: 'center',
+                                      marginTop: 4
+                                    }}>{pct}%场次使用</Text>
+                                  </View>
+                                )
+                              })}
+                            </View>
+                          </View>
+                        )}
+
+                        <View style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                          <View style={{
+                            flex: 1,
+                            padding: '16rpx 24rpx',
+                            textAlign: 'center',
+                            background: 'linear-gradient(135deg, #00ff88 0%, #00cc6a 100%)',
+                            borderRadius: 12,
+                            color: '#0a0a0f',
+                            fontWeight: 'bold',
+                            fontSize: 24
+                          }} onClick={() => {
+                            Taro.navigateTo({ url: `/pages/puzzle-reuse/index?puzzleId=${agg.puzzleId}` })
+                          }}>
+                            确认道具后复开
+                          </View>
+                          {agg.puzzle && (
+                            <View style={{
+                              flex: 1,
+                              padding: '16rpx 24rpx',
+                              textAlign: 'center',
+                              background: 'rgba(233,69,96,0.1)',
+                              border: '1px solid rgba(233,69,96,0.3)',
+                              borderRadius: 12,
+                              color: '#e94560',
+                              fontWeight: 'bold',
+                              fontSize: 24
+                            }} onClick={() => {
+                              if (agg.puzzle) setCurrentPuzzle(agg.puzzle)
+                              Taro.navigateTo({ url: '/pages/puzzle-detail/index' })
+                            }}>
+                              查看谜题详情
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )
+              })}
             </View>
           )}
         </View>

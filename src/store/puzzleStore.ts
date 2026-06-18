@@ -195,7 +195,31 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
   addRecord: (record) => {
     const { records, learning } = get()
     const newRecords = [record, ...records]
-    const newLearning = { ...learning }
+    const newLearning: LearningData = {
+      misunderstoodPhrases: learning.misunderstoodPhrases.map(x => ({ ...x })),
+      weakHorrorPhrases: learning.weakHorrorPhrases.map(x => ({ ...x })),
+      strongHorrorTriggers: learning.strongHorrorTriggers.map(x => ({ ...x })),
+      lowRatedPuzzleIds: [...learning.lowRatedPuzzleIds]
+    }
+
+    const WEAK_FEEDBACK_TAGS = [
+      '笑场', '快速解谜', '无恐怖反应', '玩家觉得不吓人',
+      '主动催进度', '闲聊摆烂', '恐怖场景笑场', '吐槽机关低级'
+    ]
+    const STRONG_TRIGGER_TAGS = [
+      '尖叫', '抱头蹲防', '不敢回头', '抱住同伴',
+      '要求降低恐怖度', '被音效吓到', '后退躲远', '抓住道具不放'
+    ]
+
+    const addWeakEntry = (phrase: string) => {
+      const existing = newLearning.weakHorrorPhrases.find(p => p.phrase === phrase)
+      if (existing) {
+        existing.count += 1
+        existing.lastAt = record.createdAt
+      } else {
+        newLearning.weakHorrorPhrases.push({ phrase, count: 1, lastAt: record.createdAt })
+      }
+    }
 
     if (record.mostMisunderstood && record.mostMisunderstood !== '无' && record.mostMisunderstood.trim()) {
       const existing = newLearning.misunderstoodPhrases.find(m => m.phrase === record.mostMisunderstood)
@@ -211,39 +235,36 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
       }
     }
 
-    const strongReactions = ['尖叫', '抱头蹲防', '不敢回头', '抱住同伴', '要求降低恐怖度', '被音效吓到']
-    record.horrorReactions.forEach(reaction => {
-      if (strongReactions.includes(reaction)) {
-        const existing = newLearning.strongHorrorTriggers.find(t => t.reaction === reaction)
-        if (existing) {
-          existing.count += 1
-          existing.lastAt = record.createdAt
-        } else {
-          newLearning.strongHorrorTriggers.push({ reaction, count: 1, lastAt: record.createdAt })
-        }
+    const selectedWeak = record.horrorReactions.filter(r => WEAK_FEEDBACK_TAGS.includes(r))
+    const selectedStrong = record.horrorReactions.filter(r => STRONG_TRIGGER_TAGS.includes(r))
+
+    selectedStrong.forEach(reaction => {
+      const existing = newLearning.strongHorrorTriggers.find(t => t.reaction === reaction)
+      if (existing) {
+        existing.count += 1
+        existing.lastAt = record.createdAt
+      } else {
+        newLearning.strongHorrorTriggers.push({ reaction, count: 1, lastAt: record.createdAt })
       }
+    })
+
+    selectedWeak.forEach(reaction => {
+      addWeakEntry(reaction)
     })
 
     if (record.rating <= 2) {
       if (!newLearning.lowRatedPuzzleIds.includes(record.puzzleId)) {
         newLearning.lowRatedPuzzleIds.push(record.puzzleId)
       }
+      addWeakEntry(`评分过低(${record.rating}分)`)
     }
 
-    if (record.rating <= 2 || record.horrorReactions.length === 0 ||
-        record.horrorReactions.every(r => ['笑场', '快速解谜', '无'].includes(r))) {
+    if (selectedWeak.length > 0 || record.rating <= 2 || record.horrorReactions.length === 0) {
       if (record.mostMisunderstood && record.mostMisunderstood.trim() && record.mostMisunderstood !== '无') {
-        const existing = newLearning.weakHorrorPhrases.find(p => p.phrase === record.mostMisunderstood)
-        if (existing) {
-          existing.count += 1
-          existing.lastAt = record.createdAt
-        } else {
-          newLearning.weakHorrorPhrases.push({
-            phrase: record.mostMisunderstood,
-            count: 1,
-            lastAt: record.createdAt
-          })
-        }
+        addWeakEntry(record.mostMisunderstood)
+      }
+      if (record.rating <= 3 && selectedWeak.length === 0) {
+        addWeakEntry(`整体氛围偏弱(评分${record.rating})`)
       }
     }
 

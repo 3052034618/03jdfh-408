@@ -95,10 +95,43 @@
   padding: $spacing-lg;
   border: 1px solid $color-border;
   transition: all $transition-base;
+  position: relative;
 
   &:active {
     transform: scale(0.98);
     opacity: 0.9;
+  }
+
+  &.cardRecommend {
+    border-color: rgba(0, 255, 136, 0.35);
+    background: linear-gradient(135deg, $color-bg-card 0%, rgba(0, 255, 136, 0.04) 100%);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 5rpx;
+      background: $color-neon-green;
+      border-top-left-radius: $radius-lg;
+      border-bottom-left-radius: $radius-lg;
+      box-shadow: 0 0 16rpx rgba(0, 255, 136, 0.4);
+    }
+  }
+
+  &.cardWarning {
+    border-color: rgba(233, 69, 96, 0.35);
+    background: linear-gradient(135deg, $color-bg-card 0%, rgba(233, 69, 96, 0.05) 100%);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 5rpx;
+      background: $color-horror-red;
+      border-top-left-radius: $radius-lg;
+      border-bottom-left-radius: $radius-lg;
+      box-shadow: 0 0 16rpx rgba(233, 69, 96, 0.4);
+    }
   }
 }
 

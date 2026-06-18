@@ -1,0 +1,333 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding: $spacing-lg $page-padding $spacing-xl;
+  padding-bottom: 220rpx;
+}
+
+.historyCard {
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.08) 0%, rgba(0, 255, 136, 0.06) 100%);
+  border: 1px solid rgba(233, 69, 96, 0.25);
+  border-radius: $radius-xl;
+  padding: $spacing-xl $spacing-lg;
+  margin-bottom: $spacing-xl;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6rpx;
+    background: linear-gradient(180deg, $color-horror-red 0%, $color-neon-green 100%);
+  }
+}
+
+.historyLabel {
+  font-size: $font-size-xs;
+  color: $color-horror-red;
+  opacity: 0.8;
+  margin-bottom: $spacing-sm;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 2rpx;
+}
+
+.historyTitle {
+  font-size: $font-size-xl;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+  margin-bottom: $spacing-sm;
+  line-height: 1.4;
+}
+
+.historyMeta {
+  display: flex;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-md;
+}
+
+.historyChip {
+  padding: 4rpx $spacing-sm;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  border-radius: $radius-button;
+  font-size: $font-size-xs;
+  color: $color-neon-green;
+}
+
+.historyStats {
+  display: flex;
+  gap: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.historyStatItem {
+  flex: 1;
+  text-align: center;
+}
+
+.historyStatNum {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-neon-green;
+}
+
+.historyStatLabel {
+  font-size: 22rpx;
+  color: $color-text-tertiary;
+  margin-top: 2rpx;
+}
+
+.section {
+  margin-bottom: $spacing-xl;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 32rpx;
+    background: $color-neon-green;
+    border-radius: 3rpx;
+    box-shadow: 0 0 10rpx rgba(0, 255, 136, 0.5);
+  }
+}
+
+.propSection {
+  margin-bottom: $spacing-lg;
+}
+
+.propCategoryTitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  font-weight: $font-weight-medium;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selectAllBtn {
+  font-size: 22rpx;
+  color: $color-neon-green;
+  padding: 4rpx 12rpx;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: $radius-xs;
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.propList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.propItem {
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+  position: relative;
+
+  &.selected {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: $color-neon-green;
+    color: $color-neon-green;
+  }
+
+  &.fromHistory {
+    &::after {
+      content: '★';
+      position: absolute;
+      top: 2rpx;
+      right: 6rpx;
+      font-size: 20rpx;
+      color: $color-horror-red;
+      opacity: 0.9;
+    }
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.legendRow {
+  display: flex;
+  gap: $spacing-md;
+  font-size: 22rpx;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: $radius-md;
+}
+
+.legendDot {
+  color: $color-horror-red;
+  margin-right: 4rpx;
+}
+
+.sliderSection {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  border: 1px solid $color-border;
+}
+
+.sliderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.sliderLabel {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.sliderValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-neon-green;
+}
+
+.counterInput {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-lg;
+}
+
+.counterBtn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-neon-green;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+
+  &:active {
+    transform: scale(0.92);
+    background: rgba(0, 255, 136, 0.2);
+  }
+}
+
+.counterNum {
+  font-size: 56rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  min-width: 120rpx;
+  text-align: center;
+}
+
+.levelRow {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+}
+
+.levelOption {
+  flex: 1;
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+  border: 1px solid $color-border;
+  background: $color-bg-hover;
+  text-align: center;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+
+  &.active {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: $color-neon-green;
+    color: $color-neon-green;
+    font-weight: $font-weight-semibold;
+  }
+
+  &.danger.active {
+    background: rgba(233, 69, 96, 0.1);
+    border-color: $color-horror-red;
+    color: $color-horror-red;
+  }
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: $spacing-lg $page-padding;
+  padding-bottom: calc(#{$spacing-lg} + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, $color-bg-page 30%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.warningRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-xs $spacing-md;
+  background: rgba(255, 159, 67, 0.1);
+  border: 1px solid rgba(255, 159, 67, 0.25);
+  border-radius: $radius-button;
+  font-size: 22rpx;
+  color: rgba(255, 159, 67, 0.9);
+  text-align: center;
+  justify-content: center;
+}
+
+.goBtn {
+  width: 100%;
+  height: $button-height-lg;
+  background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  box-shadow: 0 4rpx 24rpx rgba(0, 255, 136, 0.4);
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.goBtnText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-primary-dark;
+  letter-spacing: 3rpx;
+}
+
+.propCount {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}

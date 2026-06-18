@@ -249,6 +249,30 @@
     border-color: $color-neon-green;
     color: $color-neon-green;
   }
+
+  &.suggestedStrong {
+    border-color: rgba(0, 255, 136, 0.4);
+    color: rgba(0, 255, 136, 0.85);
+    background: rgba(0, 255, 136, 0.05);
+  }
+
+  &.suggestedWeak {
+    border-color: rgba(255, 159, 67, 0.4);
+    color: rgba(255, 159, 67, 0.9);
+    background: rgba(255, 159, 67, 0.06);
+  }
+}
+
+.strongTag {
+  background: rgba(0, 255, 136, 0.12) !important;
+  border-color: rgba(0, 255, 136, 0.4) !important;
+  color: $color-neon-green !important;
+}
+
+.weakTag {
+  background: rgba(255, 159, 67, 0.1) !important;
+  border-color: rgba(255, 159, 67, 0.45) !important;
+  color: #ff9f43 !important;
 }
 
 .puzzleInfo {

@@ -45,17 +45,29 @@ const RecordFormPage: React.FC = () => {
     }
   }, [])
 
-  const suggestedReactions = [
+  const strongReactions = [
     '尖叫',
     '抱头蹲防',
     '不敢回头',
     '抱住同伴',
     '要求降低恐怖度',
+    '被音效吓到',
+    '后退躲远',
+    '抓住道具不放'
+  ]
+
+  const weakFeedbackTags = [
     '笑场',
     '快速解谜',
-    '被音效吓到',
-    '无恐怖反应'
+    '无恐怖反应',
+    '玩家觉得不吓人',
+    '主动催进度',
+    '闲聊摆烂',
+    '恐怖场景笑场',
+    '吐槽机关低级'
   ]
+
+  const isWeakTag = (tag: string) => weakFeedbackTags.includes(tag)
 
   const misunderstoodSuggestions = [
     '玩家以为符纸上的符文是密码',
@@ -304,11 +316,17 @@ const RecordFormPage: React.FC = () => {
 
           <View className={styles.formItem}>
             <Text className={styles.formLabel}>恐怖反应</Text>
-            <Text className={styles.formHint}>高压迫感的反应会被标记为"有效触发"，下次生成时追加类似表达</Text>
+            <Text className={styles.formHint}>💀 强触发（绿色）→ 下次追加同类表达；⚠️ 弱反馈（橙色）→ 下次升级压迫感</Text>
             <View className={styles.tagInput}>
               {horrorReactions.map(reaction => (
-                <View key={reaction} className={styles.tagItem}>
-                  <Text>{reaction}</Text>
+                <View
+                  key={reaction}
+                  className={classnames(
+                    styles.tagItem,
+                    isWeakTag(reaction) ? styles.weakTag : styles.strongTag
+                  )}
+                >
+                  <Text>{isWeakTag(reaction) ? '⚠️ ' : '💀 '}{reaction}</Text>
                   <Text
                     className={styles.tagRemove}
                     onClick={() => handleReactionRemove(reaction)}
@@ -325,11 +343,30 @@ const RecordFormPage: React.FC = () => {
               onInput={(e) => setNewReaction(e.detail.value)}
               onConfirm={() => handleReactionAdd(newReaction)}
             />
+
+            <Text style={{ fontSize: '22rpx', color: '#00ff88', marginTop: '20rpx', marginBottom: '10rpx', fontWeight: 'bold' }}>
+              💀 强有效触发（下次追加同类描写）
+            </Text>
             <View className={styles.suggestedTags}>
-              {suggestedReactions.filter(r => !horrorReactions.includes(r)).map(tag => (
+              {strongReactions.filter(r => !horrorReactions.includes(r)).map(tag => (
                 <View
                   key={tag}
-                  className={styles.suggestedTag}
+                  className={classnames(styles.suggestedTag, styles.suggestedStrong)}
+                  onClick={() => handleReactionAdd(tag)}
+                >
+                  + {tag}
+                </View>
+              ))}
+            </View>
+
+            <Text style={{ fontSize: '22rpx', color: '#ff9f43', marginTop: '20rpx', marginBottom: '10rpx', fontWeight: 'bold' }}>
+              ⚠️ 弱反馈信号（下次升级压迫感）
+            </Text>
+            <View className={styles.suggestedTags}>
+              {weakFeedbackTags.filter(r => !horrorReactions.includes(r)).map(tag => (
+                <View
+                  key={tag}
+                  className={classnames(styles.suggestedTag, styles.suggestedWeak)}
                   onClick={() => handleReactionAdd(tag)}
                 >
                   + {tag}
