@@ -46,11 +46,19 @@ export interface PlayerCard {
   hint?: string
 }
 
+export interface AdjustmentTrace {
+  type: 'misunderstanding' | 'horror_weak' | 'rating_low' | 'horror_strong'
+  original?: string
+  adjusted: string
+  reason: string
+}
+
 export interface Puzzle {
   id: string
   title: string
   theme: string
   difficulty: number
+  horrorLevel?: number
   estimatedTime: number
   props: string[]
   playerCount: { min: number; max: number }
@@ -59,7 +67,9 @@ export interface Puzzle {
   playerCards: PlayerCard[]
   hints: PuzzleHint[]
   answer: string
+  adjustments?: AdjustmentTrace[]
   createdAt: number
+  basedOnHistory?: boolean
 }
 
 export interface GameRecord {
@@ -76,6 +86,7 @@ export interface GameRecord {
   rating: number
   notes: string
   createdAt: number
+  elapsedSeconds?: number
 }
 
 export interface GeneratorConfig {
@@ -88,3 +99,20 @@ export interface GeneratorConfig {
 }
 
 export type TabBarPage = 'generator' | 'prompter' | 'records' | 'mine'
+
+export interface LearningData {
+  misunderstoodPhrases: Array<{ phrase: string; count: number; lastAt: number }>
+  weakHorrorPhrases: Array<{ phrase: string; count: number; lastAt: number }>
+  strongHorrorTriggers: Array<{ reaction: string; count: number; lastAt: number }>
+  lowRatedPuzzleIds: string[]
+}
+
+export interface PendingReviewData {
+  puzzleId?: string
+  puzzleTitle?: string
+  duration?: number
+  playerCount?: number
+  hintsUsed?: number[]
+  elapsedSeconds?: number
+  fromHistory?: boolean
+}

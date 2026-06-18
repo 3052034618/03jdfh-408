@@ -7,13 +7,19 @@ import { roomSetups, propList, propCategories, horrorLevels, difficultyLevels, t
 import styles from './index.module.scss'
 
 const GeneratorPage: React.FC = () => {
-  const { config, setConfig, generateNewPuzzle, currentPuzzle } = usePuzzleStore()
+  const { config, setConfig, generateNewPuzzle, currentPuzzle, records, learning } = usePuzzleStore()
   const [selectedRoom, setSelectedRoom] = useState(config.roomSetup)
   const [selectedProps, setSelectedProps] = useState<string[]>(config.selectedProps)
   const [playerCount, setPlayerCount] = useState(config.playerCount)
   const [difficulty, setDifficulty] = useState(config.difficulty)
   const [horrorLevel, setHorrorLevel] = useState(config.horrorLevel)
   const [selectedTheme, setSelectedTheme] = useState(config.theme)
+
+  const learnedCount =
+    learning.misunderstoodPhrases.reduce((s, m) => s + m.count, 0) +
+    learning.strongHorrorTriggers.reduce((s, t) => s + t.count, 0) +
+    learning.lowRatedPuzzleIds.length
+  const hasLearning = records.length > 0 || learnedCount > 0
 
   useEffect(() => {
     const room = roomSetups.find(r => r.id === selectedRoom)
@@ -85,6 +91,22 @@ const GeneratorPage: React.FC = () => {
       <View className={styles.pageHeader}>
         <Text className={styles.title}>阴间电台</Text>
         <Text className={styles.subtitle}>—— 恐怖密室谜题生成器 ——</Text>
+
+        {hasLearning && (
+          <View className={styles.learningBanner}>
+            <Text className={styles.learningIcon}>📚</Text>
+            <View className={styles.learningContent}>
+              <Text className={styles.learningTitle}>
+                已累计学习 {records.length} 场历史经验
+              </Text>
+              <Text className={styles.learningDetail}>
+                {learnedCount > 0
+                  ? `规避 ${learning.misunderstoodPhrases.length} 类高频误解 · 追加 ${learning.strongHorrorTriggers.length} 种高效恐怖触发 · 剔除 ${learning.lowRatedPuzzleIds.length} 个低分结构`
+                  : '历史数据将持续优化下一次生成结果'}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
 
       <View className={styles.section}>

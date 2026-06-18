@@ -26,8 +26,31 @@ const PuzzleDetailPage: React.FC = () => {
     }, 800)
   }
 
+  const validPropIds = new Set(propList.map(p => p.id))
+  const safeProps = (currentPuzzle?.props || []).filter(pid => validPropIds.has(pid))
+
   const getPropName = (propId: string): string => {
     return propList.find(p => p.id === propId)?.name || propId
+  }
+
+  const getAdjustmentIcon = (type: string) => {
+    switch (type) {
+      case 'misunderstanding': return '🔍'
+      case 'horror_weak': return '🔥'
+      case 'horror_strong': return '💀'
+      case 'rating_low': return '⚡'
+      default: return '✨'
+    }
+  }
+
+  const getAdjustmentTypeLabel = (type: string) => {
+    switch (type) {
+      case 'misunderstanding': return '误解优化'
+      case 'horror_weak': return '氛围增强'
+      case 'horror_strong': return '高效触发'
+      case 'rating_low': return '结构优化'
+      default: return '调整'
+    }
   }
 
   if (!currentPuzzle) {
@@ -77,11 +100,51 @@ const PuzzleDetailPage: React.FC = () => {
       <View className={styles.section}>
         <Text className={styles.sectionTitle}>所需道具</Text>
         <View className={styles.propsList}>
-          {currentPuzzle.props.map(propId => (
+          {safeProps.map(propId => (
             <Text key={propId} className={styles.propTag}>{getPropName(propId)}</Text>
           ))}
         </View>
       </View>
+
+      {currentPuzzle.adjustments && currentPuzzle.adjustments.length > 0 && (
+        <View className={styles.section}>
+          <View className={styles.adjustmentHeader}>
+            <Text className={styles.sectionTitle} style={{ marginBottom: 0 }}>历史学习调整</Text>
+            <Text className={styles.adjustmentBadge}>
+              {currentPuzzle.adjustments.length} 处优化
+            </Text>
+          </View>
+          <View className={styles.adjustmentList}>
+            {currentPuzzle.adjustments.map((adj, idx) => (
+              <View key={idx} className={styles.adjustmentCard}>
+                <View className={styles.adjustmentTypeRow}>
+                  <Text className={styles.adjustmentIcon}>{getAdjustmentIcon(adj.type)}</Text>
+                  <Text className={`${styles.adjustmentType} ${styles[`type-${adj.type}`]}`}>
+                    {getAdjustmentTypeLabel(adj.type)}
+                  </Text>
+                </View>
+                {adj.original && adj.original !== adj.adjusted && (
+                  <View className={styles.adjustmentDiff}>
+                    <View className={styles.diffRow}>
+                      <Text className={styles.diffLabel}>原表达</Text>
+                      <Text className={styles.diffOriginal}>{adj.original}</Text>
+                    </View>
+                    <View className={styles.diffArrow}>↓</View>
+                    <View className={styles.diffRow}>
+                      <Text className={styles.diffLabel}>改后表达</Text>
+                      <Text className={styles.diffAdjusted}>{adj.adjusted}</Text>
+                    </View>
+                  </View>
+                )}
+                {(!adj.original || adj.original === adj.adjusted) && (
+                  <Text className={styles.adjustmentSingle}>{adj.adjusted}</Text>
+                )}
+                <Text className={styles.adjustmentReason}>💡 {adj.reason}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       <View className={styles.section}>
         <Text className={styles.sectionTitle}>广播台词</Text>

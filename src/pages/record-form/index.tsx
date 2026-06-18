@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, Input, Textarea, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import classnames from 'classnames'
@@ -7,7 +7,12 @@ import type { GameRecord } from '@/types/puzzle'
 import styles from './index.module.scss'
 
 const RecordFormPage: React.FC = () => {
-  const { currentPuzzle, addRecord } = usePuzzleStore()
+  const {
+    currentPuzzle,
+    addRecord,
+    consumePendingReview,
+    config
+  } = usePuzzleStore()
 
   const [duration, setDuration] = useState(25)
   const [playerCount, setPlayerCount] = useState(4)
@@ -17,6 +22,28 @@ const RecordFormPage: React.FC = () => {
   const [newReaction, setNewReaction] = useState('')
   const [rating, setRating] = useState(4)
   const [notes, setNotes] = useState('')
+  const [presetLoaded, setPresetLoaded] = useState(false)
+
+  useEffect(() => {
+    const pending = consumePendingReview()
+    if (pending) {
+      console.log('[RecordForm] 加载预设复盘数据:', pending)
+      if (pending.duration) setDuration(pending.duration)
+      if (pending.playerCount) setPlayerCount(pending.playerCount)
+      if (pending.hintsUsed && pending.hintsUsed.length > 0) setHintsUsed(pending.hintsUsed)
+      setPresetLoaded(true)
+      Taro.showToast({
+        title: '已自动填入用时和提示',
+        icon: 'none',
+        duration: 1500
+      })
+    } else {
+      if (currentPuzzle) {
+        setPlayerCount(config.playerCount || 4)
+      }
+      setPresetLoaded(true)
+    }
+  }, [])
 
   const suggestedReactions = [
     '尖叫',
@@ -26,7 +53,17 @@ const RecordFormPage: React.FC = () => {
     '要求降低恐怖度',
     '笑场',
     '快速解谜',
-    '被音效吓到'
+    '被音效吓到',
+    '无恐怖反应'
+  ]
+
+  const misunderstoodSuggestions = [
+    '玩家以为符纸上的符文是密码',
+    '没有注意到墙上的时钟指针',
+    '不知道要去调收音机的频率',
+    '误解了日记里的日期含义',
+    '密码位数猜错了',
+    '没发现老照片背面的字'
   ]
 
   const handleDurationChange = (delta: number) => {
@@ -60,39 +97,61 @@ const RecordFormPage: React.FC = () => {
     setHorrorReactions(prev => prev.filter(r => r !== reaction))
   }
 
+  const handleMisunderstoodPick = (text: string) => {
+    setMostMisunderstood(prev => prev ? prev + '；' + text : text)
+  }
+
   const handleSubmit = () => {
-    if (!currentPuzzle) {
-      Taro.showToast({ title: '请先选择谜题', icon: 'none' })
+    const puzzleId = currentPuzzle?.id || 'unknown'
+    const puzzleTitle = currentPuzzle?.title || '未命名谜题'
+
+    if (!mostMisunderstood.trim()) {
+      Taro.showModal({
+        title: '提示',
+        content: '还没有填写"最常误解的句子"，建议记录下来以便后续优化表达，确认提交吗？',
+        confirmText: '确认提交',
+        cancelText: '去填写',
+        confirmColor: '#00ff88',
+        success: (res) => {
+          if (res.confirm) {
+            doSubmit(puzzleId, puzzleTitle)
+          }
+        }
+      }).catch(() => {})
       return
     }
+    doSubmit(puzzleId, puzzleTitle)
+  }
 
+  const doSubmit = (puzzleId: string, puzzleTitle: string) => {
     const record: GameRecord = {
       id: `record-${Date.now()}`,
-      puzzleId: currentPuzzle.id,
-      puzzleTitle: currentPuzzle.title,
+      puzzleId,
+      puzzleTitle,
       startTime: Date.now() - duration * 60 * 1000,
       endTime: Date.now(),
       duration,
       playerCount,
-      hintsUsed,
-      mostMisunderstood: mostMisunderstood || '无',
+      hintsUsed: [...hintsUsed],
+      mostMisunderstood: mostMisunderstood.trim() || '无',
       horrorReactions,
       rating,
       notes,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      elapsedSeconds: duration * 60
     }
 
     addRecord(record)
 
     Taro.showToast({
-      title: '复盘已保存',
-      icon: 'success',
-      duration: 1500
+      title: '复盘已保存，下次生成将自动优化',
+      icon: 'none',
+      duration: 2000
     })
 
     setTimeout(() => {
       Taro.switchTab({ url: '/pages/records/index' })
-    }, 1500)
+    }, 2000)
   }
 
   const renderStars = () => {
@@ -111,14 +170,22 @@ const RecordFormPage: React.FC = () => {
     )
   }
 
+  if (!presetLoaded) {
+    return <View className={styles.page} />
+  }
+
   return (
     <ScrollView scrollY className={styles.page}>
-      {currentPuzzle && (
-        <View className={styles.puzzleInfo}>
-          <Text className={styles.puzzleTitle}>{currentPuzzle.title}</Text>
-          <Text className={styles.puzzleMeta}>主题：{currentPuzzle.theme}</Text>
-        </View>
-      )}
+      <View className={styles.formHeaderCard}>
+        <Text className={styles.formHeaderTitle}>📋 填写本场复盘</Text>
+        <Text className={styles.formHeaderDesc}>记录玩家表现，下次生成谜题时将自动优化表达</Text>
+        {currentPuzzle && (
+          <View className={styles.puzzleInfo}>
+            <Text className={styles.puzzleTitle}>{currentPuzzle.title}</Text>
+            <Text className={styles.puzzleMeta}>主题：{currentPuzzle.theme}</Text>
+          </View>
+        )}
+      </View>
 
       <View className={styles.formSection}>
         <Text className={styles.sectionTitle}>基本信息</Text>
@@ -176,7 +243,9 @@ const RecordFormPage: React.FC = () => {
           </View>
 
           <View className={styles.formItem}>
-            <Text className={styles.formLabel}>使用的提示</Text>
+            <Text className={styles.formLabel}>
+              使用的提示 {hintsUsed.length > 0 && <Text style={{ color: '#00ff88' }}>（已自动填入）</Text>}
+            </Text>
             <View className={styles.hintSelector}>
               {[1, 2, 3].map(level => (
                 <View
@@ -203,21 +272,39 @@ const RecordFormPage: React.FC = () => {
       </View>
 
       <View className={styles.formSection}>
-        <Text className={styles.sectionTitle}>反馈记录</Text>
+        <Text className={styles.sectionTitle}>反馈记录（用于后续优化生成）</Text>
         <View className={styles.formCard}>
           <View className={styles.formItem}>
             <Text className={styles.formLabel}>最常误解的句子/线索</Text>
+            <Text className={styles.formHint}>填写后下次生成时将自动避开类似表达，或改写为更清晰的版本</Text>
             <Textarea
               className={styles.formTextarea}
               placeholder="请输入玩家最容易误解的内容..."
               value={mostMisunderstood}
               onInput={(e) => setMostMisunderstood(e.detail.value)}
-              maxlength={200}
+              maxlength={300}
             />
+            {misunderstoodSuggestions.length > 0 && (
+              <>
+                <Text style={{ fontSize: '22rpx', color: '#555566', marginTop: '16rpx', marginBottom: '8rpx' }}>快速选择（可多选）：</Text>
+                <View className={styles.suggestedTags}>
+                  {misunderstoodSuggestions.map(tag => (
+                    <View
+                      key={tag}
+                      className={styles.suggestedTag}
+                      onClick={() => handleMisunderstoodPick(tag)}
+                    >
+                      + {tag}
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
 
           <View className={styles.formItem}>
             <Text className={styles.formLabel}>恐怖反应</Text>
+            <Text className={styles.formHint}>高压迫感的反应会被标记为"有效触发"，下次生成时追加类似表达</Text>
             <View className={styles.tagInput}>
               {horrorReactions.map(reaction => (
                 <View key={reaction} className={styles.tagItem}>
@@ -239,7 +326,7 @@ const RecordFormPage: React.FC = () => {
               onConfirm={() => handleReactionAdd(newReaction)}
             />
             <View className={styles.suggestedTags}>
-              {suggestedReactions.map(tag => (
+              {suggestedReactions.filter(r => !horrorReactions.includes(r)).map(tag => (
                 <View
                   key={tag}
                   className={styles.suggestedTag}
@@ -266,7 +353,7 @@ const RecordFormPage: React.FC = () => {
 
       <View className={styles.bottomBar}>
         <View className={styles.submitBtn} onClick={handleSubmit}>
-          <Text className={styles.submitText}>保 存 复 盘</Text>
+          <Text className={styles.submitText}>保 存 并 优 化 下 次 生 成</Text>
         </View>
       </View>
     </ScrollView>

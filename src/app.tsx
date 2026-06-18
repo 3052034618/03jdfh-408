@@ -1,17 +1,23 @@
 import React, { useEffect } from 'react';
 import { useDidShow, useDidHide } from '@tarojs/taro';
-// 全局样式
+import { usePuzzleStore } from '@/store/puzzleStore';
 import './app.scss';
 
 function App(props) {
-  // 可以使用所有的 React Hooks
-  useEffect(() => {});
+  const initFromStorage = usePuzzleStore(state => state.initFromStorage);
 
-  // 对应 onShow
-  useDidShow(() => {});
+  useEffect(() => {
+    initFromStorage();
+    console.log('[App] 阴间电台初始化完成');
+  }, [initFromStorage]);
 
-  // 对应 onHide
-  useDidHide(() => {});
+  useDidShow(() => {
+    console.log('[App] 小程序回到前台');
+  });
+
+  useDidHide(() => {
+    console.log('[App] 小程序退到后台');
+  });
 
   return props.children;
 }

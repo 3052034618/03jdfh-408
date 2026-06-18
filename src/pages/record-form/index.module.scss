@@ -7,6 +7,36 @@
   padding-bottom: 180rpx;
 }
 
+.formHeaderCard {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(233, 69, 96, 0.06) 100%);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-xl;
+}
+
+.formHeaderTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+  display: block;
+}
+
+.formHeaderDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.formHint {
+  font-size: $font-size-xs;
+  color: $color-warning;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
 .formSection {
   margin-bottom: $spacing-xl;
 }

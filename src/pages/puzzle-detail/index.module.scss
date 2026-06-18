@@ -332,3 +332,149 @@
   font-size: $font-size-xs;
   color: $color-neon-green;
 }
+
+.adjustmentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.adjustmentBadge {
+  padding: 4rpx $spacing-sm;
+  background: rgba(233, 69, 96, 0.15);
+  border: 1px solid rgba(233, 69, 96, 0.3);
+  color: $color-horror-red;
+  font-size: $font-size-xs;
+  border-radius: $radius-button;
+  font-weight: $font-weight-semibold;
+}
+
+.adjustmentList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.adjustmentCard {
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4rpx;
+    background: linear-gradient(180deg, $color-horror-red 0%, $color-neon-green 100%);
+  }
+}
+
+.adjustmentTypeRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.adjustmentIcon {
+  font-size: 28rpx;
+  line-height: 1;
+}
+
+.adjustmentType {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  padding: 2rpx $spacing-sm;
+  border-radius: $radius-xs;
+
+  &.type-misunderstanding {
+    color: #4da6ff;
+    background: rgba(77, 166, 255, 0.1);
+  }
+  &.type-horror_weak {
+    color: #ff9f43;
+    background: rgba(255, 159, 67, 0.1);
+  }
+  &.type-horror_strong {
+    color: $color-horror-red;
+    background: rgba(233, 69, 96, 0.1);
+  }
+  &.type-rating_low {
+    color: $color-neon-green;
+    background: rgba(0, 255, 136, 0.1);
+  }
+}
+
+.adjustmentDiff {
+  background: rgba(26, 26, 46, 0.6);
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.diffRow {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-start;
+}
+
+.diffLabel {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: $color-text-tertiary;
+  padding-top: 4rpx;
+  width: 100rpx;
+}
+
+.diffOriginal {
+  flex: 1;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  text-decoration: line-through;
+  text-decoration-color: rgba(233, 69, 96, 0.5);
+  line-height: 1.6;
+  opacity: 0.7;
+}
+
+.diffAdjusted {
+  flex: 1;
+  font-size: $font-size-xs;
+  color: $color-neon-green;
+  line-height: 1.6;
+  font-weight: $font-weight-medium;
+}
+
+.diffArrow {
+  text-align: center;
+  color: $color-horror-red;
+  font-size: 24rpx;
+  margin: $spacing-xs 0;
+  opacity: 0.6;
+}
+
+.adjustmentSingle {
+  font-size: $font-size-sm;
+  color: $color-neon-green;
+  line-height: 1.6;
+  margin-bottom: $spacing-sm;
+  background: rgba(0, 255, 136, 0.05);
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  border-left: 3rpx solid $color-neon-green;
+}
+
+.adjustmentReason {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  padding-top: $spacing-sm;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  opacity: 0.85;
+}
