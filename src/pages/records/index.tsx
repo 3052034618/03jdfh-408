@@ -321,6 +321,81 @@ const RecordsPage: React.FC = () => {
                     </View>
                   )}
 
+                  {record.checklistStatus && (
+                    <View style={{ 
+                      marginTop: 16, 
+                      padding: '16rpx 20rpx', 
+                      background: 'rgba(0,255,136,0.04)', 
+                      borderRadius: 12,
+                      border: '1rpx solid rgba(0,255,136,0.15)'
+                    }}>
+                      <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <Text style={{ fontSize: 24, color: '#00ff88', fontWeight: 'bold' }}>
+                          📋 现场执行完成度
+                        </Text>
+                        <Text style={{ 
+                          fontSize: 24, 
+                          fontWeight: 'bold',
+                          color: record.checklistStatus.overallRate >= 0.9 ? '#00ff88' 
+                            : record.checklistStatus.overallRate >= 0.6 ? '#ff9f43' 
+                            : '#e94560'
+                        }}>
+                          {Math.round(record.checklistStatus.overallRate * 100)}%
+                          （{record.checklistStatus.completedItems}/{record.checklistStatus.totalItems}）
+                        </Text>
+                      </View>
+                      <View style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        {(['setup', 'control', 'reset', 'safety'] as const).map(p => {
+                          const labels: Record<string, string> = { setup: '摆放', control: '暗控', reset: '复位', safety: '安全' }
+                          const stats = record.checklistStatus!.phases[p]
+                          const isResetOrSafety = p === 'reset' || p === 'safety'
+                          const hasMiss = isResetOrSafety && stats.completed < stats.total
+                          return (
+                            <View key={p} style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: 6,
+                              padding: '4rpx 12rpx',
+                              background: hasMiss ? 'rgba(233,69,96,0.08)' : 'rgba(255,255,255,0.02)',
+                              borderRadius: 8,
+                              border: hasMiss ? '1rpx solid rgba(233,69,96,0.3)' : 'none'
+                            }}>
+                              <Text style={{ fontSize: 22, color: '#c8c8d0' }}>{labels[p]}</Text>
+                              <Text style={{ 
+                                fontSize: 22, 
+                                fontWeight: 'bold',
+                                color: stats.completionRate === 1 
+                                  ? '#00ff88' 
+                                  : hasMiss ? '#e94560' : '#ff9f43' 
+                              }}>
+                                {stats.completed}/{stats.total}
+                              </Text>
+                              {hasMiss && (
+                                <Text style={{ fontSize: 20, color: '#e94560' }}>⚠️</Text>
+                              )}
+                            </View>
+                          )
+                        })}
+                      </View>
+                      {record.checklistStatus.missedResetItems.length > 0 && (
+                        <View style={{ marginTop: 10, paddingTop: 10, borderTop: '1rpx dashed rgba(255,255,255,0.08)' }}>
+                          <Text style={{ fontSize: 22, color: '#e94560', lineHeight: 1.6 }}>
+                            ⚠️ 漏复位：{record.checklistStatus.missedResetItems.slice(0, 2).join('；')}
+                            {record.checklistStatus.missedResetItems.length > 2 ? ` 等${record.checklistStatus.missedResetItems.length}项` : ''}
+                          </Text>
+                        </View>
+                      )}
+                      {record.checklistStatus.missedSafetyItems.length > 0 && (
+                        <View style={{ marginTop: 6 }}>
+                          <Text style={{ fontSize: 22, color: '#e94560', lineHeight: 1.6 }}>
+                            🛡️ 漏安全检查：{record.checklistStatus.missedSafetyItems.slice(0, 2).join('；')}
+                            {record.checklistStatus.missedSafetyItems.length > 2 ? ` 等${record.checklistStatus.missedSafetyItems.length}项` : ''}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
                   <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16rpx' }}>
                     <Text className={styles.recordDate}>
                       {dayjs(record.createdAt).format('YYYY-MM-DD HH:mm')}

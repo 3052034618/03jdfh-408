@@ -80,6 +80,28 @@ export interface Puzzle {
   basedOnHistory?: boolean
 }
 
+export interface ChecklistPhaseStats {
+  total: number
+  completed: number
+  completionRate: number
+}
+
+export interface ChecklistStatus {
+  puzzleId: string
+  capturedAt: number
+  phases: {
+    setup: ChecklistPhaseStats
+    control: ChecklistPhaseStats
+    reset: ChecklistPhaseStats
+    safety: ChecklistPhaseStats
+  }
+  totalItems: number
+  completedItems: number
+  overallRate: number
+  missedResetItems: string[]
+  missedSafetyItems: string[]
+}
+
 export interface GameRecord {
   id: string
   puzzleId: string
@@ -95,6 +117,7 @@ export interface GameRecord {
   notes: string
   createdAt: number
   elapsedSeconds?: number
+  checklistStatus?: ChecklistStatus
 }
 
 export interface GeneratorConfig {

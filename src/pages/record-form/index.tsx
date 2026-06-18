@@ -11,6 +11,7 @@ const RecordFormPage: React.FC = () => {
     currentPuzzle,
     addRecord,
     consumePendingReview,
+    captureChecklistStatus,
     config
   } = usePuzzleStore()
 
@@ -136,6 +137,8 @@ const RecordFormPage: React.FC = () => {
   }
 
   const doSubmit = (puzzleId: string, puzzleTitle: string) => {
+    const checklistStatus = captureChecklistStatus(puzzleId)
+
     const record: GameRecord = {
       id: `record-${Date.now()}`,
       puzzleId,
@@ -150,7 +153,8 @@ const RecordFormPage: React.FC = () => {
       rating,
       notes,
       createdAt: Date.now(),
-      elapsedSeconds: duration * 60
+      elapsedSeconds: duration * 60,
+      checklistStatus: checklistStatus || undefined
     }
 
     addRecord(record)

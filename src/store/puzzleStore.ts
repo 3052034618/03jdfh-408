@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import Taro from '@tarojs/taro'
-import type { Puzzle, GameRecord, GeneratorConfig, LearningData, PendingReviewData, AdjustmentTrace } from '@/types/puzzle'
+import type { Puzzle, GameRecord, GeneratorConfig, LearningData, PendingReviewData, AdjustmentTrace, ExecutionChecklist, ChecklistStatus } from '@/types/puzzle'
 import { mockPuzzles, mockRecords } from '@/data/puzzleTemplates'
 import { generatePuzzle } from '@/utils/puzzleGenerator'
 
@@ -10,7 +10,8 @@ const STORAGE_KEYS = {
   LEARNING: 'underground_radio_learning',
   CONFIG: 'underground_radio_config',
   CURRENT_PUZZLE: 'underground_radio_current_puzzle',
-  PENDING_REVIEW: 'underground_radio_pending_review'
+  PENDING_REVIEW: 'underground_radio_pending_review',
+  CHECKLIST_STATES: 'underground_radio_checklist_states'
 }
 
 const initialLearning: LearningData = {
@@ -51,6 +52,7 @@ interface PuzzleState {
   isGameActive: number | null
   usedHints: number[]
   gameElapsedSeconds: number
+  checklistStates: Record<string, ExecutionChecklist>
 
   initFromStorage: () => void
   setConfig: (config: Partial<GeneratorConfig>) => void
@@ -66,6 +68,10 @@ interface PuzzleState {
   addAdjustmentsToCurrentPuzzle: (adjustments: AdjustmentTrace[]) => void
   reuseHistoryPuzzle: (puzzleId: string) => void
   getLearningStats: () => LearningData
+  setChecklistItem: (puzzleId: string, phase: keyof ExecutionChecklist, itemId: string, done: boolean) => void
+  getChecklistForPuzzle: (puzzleId: string) => ExecutionChecklist | null
+  captureChecklistStatus: (puzzleId: string) => ChecklistStatus | null
+  resetChecklistForPuzzle: (puzzleId: string) => void
 }
 
 const initialConfig: GeneratorConfig = {
@@ -89,6 +95,7 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
   isGameActive: null,
   usedHints: [],
   gameElapsedSeconds: 0,
+  checklistStates: {},
 
   initFromStorage: () => {
     const storedPuzzles = safeGetStorage<Puzzle[]>(STORAGE_KEYS.PUZZLES, [])
@@ -97,6 +104,7 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
     const storedConfig = safeGetStorage<GeneratorConfig>(STORAGE_KEYS.CONFIG, initialConfig)
     const storedCurrent = safeGetStorage<Puzzle | null>(STORAGE_KEYS.CURRENT_PUZZLE, null)
     const storedPending = safeGetStorage<PendingReviewData | null>(STORAGE_KEYS.PENDING_REVIEW, null)
+    const storedChecklist = safeGetStorage<Record<string, ExecutionChecklist>>(STORAGE_KEYS.CHECKLIST_STATES, {})
 
     const allPuzzles = [...mockPuzzles, ...storedPuzzles.filter(p => !mockPuzzles.find(m => m.id === p.id))]
     const allRecords = [...mockRecords, ...storedRecords.filter(r => !mockRecords.find(m => m.id === r.id))]
@@ -107,7 +115,8 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
       learning: storedLearning,
       config: storedConfig,
       currentPuzzle: storedCurrent,
-      pendingReview: storedPending
+      pendingReview: storedPending,
+      checklistStates: storedChecklist
     })
 
     console.log('[Storage] 初始化完成，谜题:', allPuzzles.length, '记录:', allRecords.length)
@@ -136,6 +145,12 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
     safeSetStorage(STORAGE_KEYS.CURRENT_PUZZLE, puzzle)
     safeSetStorage(STORAGE_KEYS.PUZZLES, get().puzzles)
 
+    if (puzzle.executionChecklist) {
+      const newChecklistStates = { ...get().checklistStates, [puzzle.id]: puzzle.executionChecklist }
+      set({ checklistStates: newChecklistStates })
+      safeSetStorage(STORAGE_KEYS.CHECKLIST_STATES, newChecklistStates)
+    }
+
     console.log('[Generate] 谜题生成:', puzzle.title, '调整项:', adjustments?.length || 0)
     return { puzzle, adjustments: adjustments || [] }
   },
@@ -143,6 +158,12 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
   setCurrentPuzzle: (puzzle) => {
     set({ currentPuzzle: puzzle })
     safeSetStorage(STORAGE_KEYS.CURRENT_PUZZLE, puzzle)
+
+    if (puzzle.executionChecklist && !get().checklistStates[puzzle.id]) {
+      const newChecklistStates = { ...get().checklistStates, [puzzle.id]: puzzle.executionChecklist }
+      set({ checklistStates: newChecklistStates })
+      safeSetStorage(STORAGE_KEYS.CHECKLIST_STATES, newChecklistStates)
+    }
   },
 
   startGame: () => {
@@ -338,5 +359,81 @@ export const usePuzzleStore = create<PuzzleState>((set, get) => ({
 
   getLearningStats: () => {
     return get().learning
+  },
+
+  setChecklistItem: (puzzleId, phase, itemId, done) => {
+    const current = get().checklistStates
+    const list = current[puzzleId]
+    if (!list) return
+
+    const newPhaseArr = list[phase].map(item =>
+      item.id === itemId ? { ...item, done } : item
+    )
+    const newList: ExecutionChecklist = {
+      ...list,
+      [phase]: newPhaseArr
+    }
+    const newChecklistStates = { ...current, [puzzleId]: newList }
+    set({ checklistStates: newChecklistStates })
+    safeSetStorage(STORAGE_KEYS.CHECKLIST_STATES, newChecklistStates)
+  },
+
+  getChecklistForPuzzle: (puzzleId) => {
+    return get().checklistStates[puzzleId] || null
+  },
+
+  captureChecklistStatus: (puzzleId): ChecklistStatus | null => {
+    const list = get().checklistStates[puzzleId]
+    if (!list) return null
+
+    const phaseStats = (phaseList: ExecutionChecklist['setup']) => {
+      const total = phaseList.length
+      const completed = phaseList.filter(i => i.done).length
+      return { total, completed, completionRate: total === 0 ? 1 : Math.round(completed * 100 / total) / 100 }
+    }
+
+    const phases = {
+      setup: phaseStats(list.setup),
+      control: phaseStats(list.control),
+      reset: phaseStats(list.reset),
+      safety: phaseStats(list.safety)
+    }
+    const totalItems = phases.setup.total + phases.control.total + phases.reset.total + phases.safety.total
+    const completedItems = phases.setup.completed + phases.control.completed + phases.reset.completed + phases.safety.completed
+
+    const missedResetItems = list.reset.filter(i => !i.done).map(i => i.item)
+    const missedSafetyItems = list.safety.filter(i => !i.done).map(i => i.item)
+
+    return {
+      puzzleId,
+      capturedAt: Date.now(),
+      phases,
+      totalItems,
+      completedItems,
+      overallRate: totalItems === 0 ? 1 : Math.round(completedItems * 100 / totalItems) / 100,
+      missedResetItems,
+      missedSafetyItems
+    }
+  },
+
+  resetChecklistForPuzzle: (puzzleId) => {
+    const puzzle = get().puzzles.find(p => p.id === puzzleId)
+    const current = get().checklistStates
+    if (puzzle?.executionChecklist) {
+      const newChecklistStates = { ...current, [puzzleId]: puzzle.executionChecklist }
+      set({ checklistStates: newChecklistStates })
+      safeSetStorage(STORAGE_KEYS.CHECKLIST_STATES, newChecklistStates)
+    } else if (current[puzzleId]) {
+      const resetPhase = (arr: ExecutionChecklist['setup']) => arr.map(i => ({ ...i, done: false }))
+      const resetList: ExecutionChecklist = {
+        setup: resetPhase(current[puzzleId].setup),
+        control: resetPhase(current[puzzleId].control),
+        reset: resetPhase(current[puzzleId].reset),
+        safety: resetPhase(current[puzzleId].safety)
+      }
+      const newChecklistStates = { ...current, [puzzleId]: resetList }
+      set({ checklistStates: newChecklistStates })
+      safeSetStorage(STORAGE_KEYS.CHECKLIST_STATES, newChecklistStates)
+    }
   }
 }))

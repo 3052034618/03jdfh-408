@@ -102,7 +102,7 @@ const PuzzleReusePage: React.FC = () => {
           duration: 1500
         })
         setTimeout(() => {
-          Taro.switchTab({ url: '/pages/prompter/index' })
+          Taro.navigateTo({ url: '/pages/risk-preview/index' })
         }, 1500)
       } catch (e) {
         Taro.hideLoading()

@@ -1,0 +1,223 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding: $spacing-lg $page-padding;
+  padding-bottom: 200rpx;
+}
+
+.emptyState {
+  padding: $spacing-xxl $spacing-lg;
+  text-align: center;
+}
+
+.emptyTitle {
+  display: block;
+  font-size: $font-size-xl;
+  color: $color-horror-red;
+  margin-bottom: $spacing-md;
+}
+
+.emptyDesc {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.7;
+  margin-bottom: $spacing-xl;
+}
+
+.btnSecondary {
+  display: inline-block;
+  padding: $spacing-sm $spacing-xl;
+  background: $color-bg-card;
+  border: 1px solid $color-neon-green;
+  color: $color-neon-green;
+  border-radius: $radius-xl;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.headerBanner {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.15) 0%, rgba(255, 159, 67, 0.15) 100%);
+  border: 1px solid rgba(233, 69, 96, 0.4);
+  border-radius: $radius-xl;
+  margin-bottom: $spacing-xl;
+}
+
+.bannerIcon {
+  font-size: 72rpx;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.bannerTextWrap {
+  flex: 1;
+}
+
+.bannerTitle {
+  display: block;
+  font-size: $font-size-lg;
+  color: $color-text-white;
+  font-weight: $font-weight-bold;
+  margin-bottom: 8rpx;
+}
+
+.bannerDesc {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.6;
+}
+
+.riskCard {
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+}
+
+.riskHeader {
+  display: flex;
+  gap: $spacing-md;
+  margin-bottom: $spacing-lg;
+  padding-bottom: $spacing-md;
+  border-bottom: 1px solid $color-border;
+}
+
+.riskIcon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: $radius-lg;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.riskTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+  line-height: 1.4;
+}
+
+.riskPropCount {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.riskDesc {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  margin-top: 8rpx;
+  margin-bottom: 12rpx;
+}
+
+.relatedProps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.riskPropTag {
+  display: inline-block;
+  padding: 4rpx 16rpx;
+  border: 1px solid;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  line-height: 1.6;
+}
+
+.checkPhase {
+  margin-top: $spacing-md;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.phaseTitle {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-sm;
+  padding-left: $spacing-sm;
+  border-left: 3rpx solid $color-neon-green;
+}
+
+.checkItem {
+  display: flex;
+  gap: 16rpx;
+  padding: $spacing-sm 0;
+  padding-left: $spacing-sm;
+  border-radius: $radius-sm;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+.checkBox {
+  width: 44rpx;
+  height: 44rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkText {
+  flex: 1;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.7;
+}
+
+.bottomBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc($spacing-md + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(10, 10, 15, 0) 0%, rgba(10, 10, 15, 0.98) 30%);
+  backdrop-filter: blur(8px);
+}
+
+.btnBack {
+  padding: $spacing-md $spacing-lg;
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  color: $color-text-secondary;
+  border-radius: $radius-xl;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.btnPrimary {
+  flex: 1;
+  padding: $spacing-md $spacing-lg;
+  background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+  color: #0a0a0f;
+  border-radius: $radius-xl;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  text-align: center;
+  box-shadow: 0 4rpx 24rpx rgba(0, 255, 136, 0.3);
+  line-height: 1.5;
+}

@@ -6,7 +6,8 @@ export default defineAppConfig({
     'pages/mine/index',
     'pages/puzzle-detail/index',
     'pages/record-form/index',
-    'pages/puzzle-reuse/index'
+    'pages/puzzle-reuse/index',
+    'pages/risk-preview/index'
   ],
   window: {
     backgroundTextStyle: 'dark',

@@ -478,3 +478,118 @@
   border-top: 1px dashed rgba(255, 255, 255, 0.06);
   opacity: 0.85;
 }
+
+.stageTabs {
+  display: flex;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $spacing-xs;
+  margin-bottom: $spacing-lg;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+}
+
+.stageTab {
+  flex: 1;
+  min-width: 120rpx;
+  padding: $spacing-sm $spacing-xs;
+  text-align: center;
+  font-size: 24rpx;
+  color: $color-text-secondary;
+  border-radius: $radius-md;
+  transition: all $transition-base;
+  line-height: 1.4;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &.activeTab {
+    background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+    color: #0a0a0f;
+    font-weight: $font-weight-semibold;
+    box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.3);
+  }
+}
+
+.acceptanceCard {
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.acceptanceHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1px solid $color-border;
+}
+
+.acceptanceIndex {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
+  background: rgba(0, 255, 136, 0.12);
+  color: $color-neon-green;
+  font-weight: $font-weight-bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-sm;
+}
+
+.acceptanceName {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.acceptanceBadge {
+  padding: 6rpx 16rpx;
+  border-radius: 24rpx;
+
+  &.fullPass {
+    background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+  }
+  &.partialPass {
+    background: rgba(255, 159, 67, 0.15);
+    border: 1px solid rgba(255, 159, 67, 0.4);
+  }
+}
+
+.acceptanceRow {
+  margin-bottom: $spacing-sm;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.acceptanceColLabel {
+  font-size: $font-size-xs;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  margin-bottom: 8rpx;
+  display: inline-block;
+
+  &.colOK {
+    background: rgba(0, 255, 136, 0.08);
+  }
+  &.colWarn {
+    background: rgba(255, 159, 67, 0.08);
+  }
+}
+
+.acceptanceColText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  line-height: 1.7;
+  padding-left: 4rpx;
+  white-space: pre-wrap;
+}
