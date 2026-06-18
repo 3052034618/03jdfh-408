@@ -85,6 +85,38 @@
   }
 }
 
+.stageTabs {
+  display: flex;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $spacing-xs;
+  margin-bottom: $spacing-lg;
+  gap: $spacing-xs;
+}
+
+.stageTab {
+  flex: 1;
+  padding: $spacing-sm $spacing-xs;
+  text-align: center;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border-radius: $radius-md;
+  transition: all $transition-base;
+  line-height: 1.4;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &.activeTab {
+    background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+    color: #0a0a0f;
+    font-weight: $font-weight-semibold;
+    box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.3);
+  }
+}
+
 .section {
   margin-bottom: $spacing-xl;
 }

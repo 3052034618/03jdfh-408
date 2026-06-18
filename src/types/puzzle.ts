@@ -39,6 +39,13 @@ export interface HostSteps {
   cleanup: string[]
 }
 
+export interface ExecutionChecklist {
+  setup: Array<{ id: string; item: string; done: boolean }>
+  control: Array<{ id: string; item: string; done: boolean }>
+  reset: Array<{ id: string; item: string; done: boolean }>
+  safety: Array<{ id: string; item: string; done: boolean }>
+}
+
 export interface PlayerCard {
   id: string
   title: string
@@ -68,6 +75,7 @@ export interface Puzzle {
   hints: PuzzleHint[]
   answer: string
   adjustments?: AdjustmentTrace[]
+  executionChecklist?: ExecutionChecklist
   createdAt: number
   basedOnHistory?: boolean
 }

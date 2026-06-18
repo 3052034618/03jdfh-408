@@ -1,4 +1,4 @@
-import type { Puzzle, GeneratorConfig, PuzzleHint, PlayerCard, HostSteps, PuzzleScript, AdjustmentTrace, LearningData } from '@/types/puzzle'
+import type { Puzzle, GeneratorConfig, PuzzleHint, PlayerCard, HostSteps, PuzzleScript, AdjustmentTrace, LearningData, ExecutionChecklist } from '@/types/puzzle'
 import { propList, themes, roomSetups } from '@/data/props'
 
 function getRandomItem<T>(arr: T[]): T {
@@ -25,6 +25,33 @@ interface PhraseReplacement {
   original: string
   replaced: string
   type: 'misunderstanding' | 'horror_weak'
+}
+
+const ALL_WEAK_TAGS = [
+  { key: '笑场', label: '恐怖场景笑场' },
+  { key: '快速解谜', label: '难度不足解谜过快' },
+  { key: '无恐怖反应', label: '完全无恐怖反应' },
+  { key: '玩家觉得不吓人', label: '玩家明确说不吓人' },
+  { key: '主动催进度', label: '玩家主动催进度' },
+  { key: '闲聊摆烂', label: '玩家闲聊摆烂不投入' },
+  { key: '恐怖场景笑场', label: '恐怖场景笑场' },
+  { key: '吐槽机关低级', label: '吐槽机关太简单低级' }
+]
+
+function summarizeWeakFeedback(learning: LearningData): { tags: Array<{ label: string; count: number }>; total: number } {
+  const counter: Record<string, number> = {}
+  let total = 0
+  ALL_WEAK_TAGS.forEach(t => {
+    const entry = learning.weakHorrorPhrases.find(w => w.phrase.includes(t.key))
+    if (entry) {
+      counter[t.label] = (counter[t.label] || 0) + entry.count
+      total += entry.count
+    }
+  })
+  return {
+    tags: Object.entries(counter).map(([label, count]) => ({ label, count })),
+    total
+  }
 }
 
 function replaceMisunderstoodPhrases(
@@ -62,11 +89,12 @@ function replaceMisunderstoodPhrases(
           a.type === 'misunderstanding' && a.original === rep.original
         )
         if (!alreadyTraced) {
+          const cnt = learning.misunderstoodPhrases.find(m => m.phrase === matchedMisunderstood || result.includes(m.phrase))?.count || 1
           adjustments.push({
             type: 'misunderstanding',
             original: rep.original,
             adjusted: rep.replaced,
-            reason: `表达「${rep.original}」在历史复盘中被频繁误解（已出现${learning.misunderstoodPhrases.find(m => m.phrase === matchedMisunderstood || result.includes(m.phrase))?.count || 1}次）`
+            reason: `表达「${rep.original}」在历史复盘中被误解 ${cnt} 次（高频误解词），改写为更具象的「${rep.replaced}」降低歧义`
           })
         }
       }
@@ -85,9 +113,8 @@ function enhanceHorrorPhrases(
   if (config.horrorLevel < 1) return text
 
   let result = text
-
-  const weakPhraseCount = learning.weakHorrorPhrases.length
-  const hasWeakFeedback = weakPhraseCount > 0 || config.horrorLevel >= 2
+  const weakSummary = summarizeWeakFeedback(learning)
+  const hasWeakFeedback = weakSummary.total > 0 || config.horrorLevel >= 2
 
   if (hasWeakFeedback) {
     const weakEnhancements: Array<{ from: RegExp; to: string; tag: string; original: string }> = [
@@ -103,6 +130,10 @@ function enhanceHorrorPhrases(
       { from: /影子/g, to: '不属于这里的影子，它在动，在你看不见的角落', tag: '影子', original: '影子' }
     ]
 
+    const reasonSuffix = weakSummary.total > 0
+      ? `触发类型：${weakSummary.tags.map(t => `${t.label}×${t.count}`).join('、')}，共${weakSummary.total}次弱反馈`
+      : `恐怖等级 ${config.horrorLevel} 级（中/重恐），统一升级为压迫式表达`
+
     for (const enh of weakEnhancements) {
       if (enh.from.test(result)) {
         result = result.replace(enh.from, enh.to)
@@ -110,16 +141,11 @@ function enhanceHorrorPhrases(
           a.type === 'horror_weak' && a.original === enh.original
         )
         if (!alreadyTraced) {
-          const weakCount = learning.weakHorrorPhrases.filter(w =>
-            ['笑场', '无恐怖反应', '玩家觉得不吓人', '快速解谜'].some(tag => w.phrase.includes(tag))
-          ).reduce((s, w) => s + w.count, 0)
           adjustments.push({
             type: 'horror_weak',
             original: enh.original,
             adjusted: enh.to,
-            reason: weakCount > 0
-              ? `检测到${weakCount}次弱反馈（笑场/不吓人/无反应），「${enh.tag}」改为高压迫感描写`
-              : `恐怖等级${config.horrorLevel}级，「${enh.tag}」升级为压迫式表达`
+            reason: `将「${enh.tag}」升级为高压迫感描写 → ${reasonSuffix}`
           })
         }
       }
@@ -167,9 +193,22 @@ function generateScript(
   const hasTalisman = availableProps.includes('talisman')
   const hasMirror = availableProps.includes('mirror')
   const hasBell = availableProps.includes('bell')
-  const hasDoor = availableProps.includes('iron-door')
+  const hasHandBell = availableProps.includes('hand-bell')
   const hasBook = availableProps.includes('bookshelf')
   const hasChandelier = availableProps.includes('chandelier')
+  const hasDoorLock = availableProps.includes('door-lock')
+  const hasIronDoor = availableProps.includes('iron-door')
+  const hasPadlock = availableProps.includes('padlock')
+  const hasCombLock = availableProps.includes('combination-lock')
+  const hasLockbox = availableProps.includes('lockbox')
+  const hasCandle = availableProps.includes('candle')
+  const hasLantern = availableProps.includes('lantern')
+  const hasFlashlight = availableProps.includes('flashlight')
+  const hasBlacklight = availableProps.includes('blacklight')
+  const hasTape = availableProps.includes('tape-recorder')
+  const hasPhono = availableProps.includes('phonograph')
+  const hasMask = availableProps.includes('mask')
+  const hasCompass = availableProps.includes('compass')
 
   let opening = ''
   let main = ''
@@ -181,6 +220,11 @@ function generateScript(
     main = '【电流声】这个房间里藏着一个十年前的秘密...真相就埋在你们眼前的每一件物品里...仔细找...'
     climax = '【尖锐杂音】不！！！不要继续调了！！！【突然绝对死寂】...太迟了...它已经听到你们了...'
     ending = '【微弱的声音】谢谢你们...帮我把真相带出去...【沙沙声渐弱】滋滋滋...'
+  } else if (hasDoorLock || hasIronDoor || hasPadlock) {
+    opening = '【沉重的门关上声】咔哒...铁门在身后锁死了...你们必须在这里找到出口的密码...'
+    main = '地下室的空气阴冷潮湿...墙上挂着好几种锁...每一把锁，都在向你们暗示一组数字...'
+    climax = '【灯光突然熄灭】啊...！...【锁扣弹开的脆响】...有一把锁...自己开了...就在你们身后...'
+    ending = '【最后一道锁解开的声音】砰...铁门开了...但走出去之前，不要回头看...'
   } else {
     opening = '【沉重的门关上声】咔哒...你们已经被锁在里面了...这个房间...记住你们看到的一切...'
     main = '空气里弥漫着一股霉味...房间里的每一件物品都在诉说着过去...不要放过任何细节...'
@@ -188,32 +232,24 @@ function generateScript(
     ending = '【远处传来钥匙声】咔哒...门开了...但有些东西，你们已经带出来了...'
   }
 
-  if (hasRadio) {
-    opening += ' 调到正确的频率，它会告诉你们一切。'
-  }
-  if (hasClock) {
-    opening += ' 记住，当时间停止的那一刻，答案才会出现。'
-    main += ' 墙上的时钟停在了那一刻——那一刻就是一切的开始。'
-  }
-  if (hasTalisman) {
-    main += ' 那张符纸不是装饰品，它写的东西，字字属实。'
-  }
-  if (hasMirror) {
-    main += ' 别盯着镜子看太久，里面的东西，会盯着你。'
-    climax += ' 镜子里...有东西在看着你...它在笑...嘴角咧到了耳根...'
-  }
-  if (hasBell) {
-    climax += ' 【铃声7响】叮...叮...叮...每一声，都离你的耳朵更近一寸...'
-  }
-  if (hasDoor) {
-    main += ' 那扇铁门，只有找到正确的密码才能打开。'
-  }
-  if (hasBook) {
-    main += ' 书架上那本缺了页的书，缺的那几页就在房间里。'
-  }
-  if (hasChandelier) {
-    climax += ' 【水晶吊灯摇晃】哗啦...有什么东西从上面滴下来，滴在了你脖子后面...'
-  }
+  if (hasRadio) opening += ' 调到正确的频率，它会告诉你们一切。'
+  if (hasClock) { opening += ' 记住，当时间停止的那一刻，答案才会出现。'; main += ' 墙上的时钟停在了那一刻——那一刻就是一切的开始。' }
+  if (hasTalisman) main += ' 那张符纸不是装饰品，它写的东西，字字属实。'
+  if (hasMirror) { main += ' 别盯着镜子看太久，里面的东西，会盯着你。'; climax += ' 镜子里...有东西在看着你...它在笑...嘴角咧到了耳根...' }
+  if (hasBell || hasHandBell) climax += ' 【铃声7响】叮...叮...叮...每一声，都离你的耳朵更近一寸...'
+  if (hasDoorLock || hasIronDoor) main += ' 那扇铁门上的密码锁，只有找齐所有数字才能打开。'
+  if (hasPadlock) main += ' 柜子上的那把铜挂锁，它的密码，刻在你们手里的某件东西上。'
+  if (hasCombLock) main += ' 箱子上的转盘密码锁，需要左右旋转对应三组数字。'
+  if (hasBook) main += ' 书架上那本缺了页的书，缺的那几页就在房间里。'
+  if (hasChandelier) climax += ' 【水晶吊灯摇晃】哗啦...有什么东西从上面滴下来，滴在了你脖子后面...'
+  if (hasCandle) { main += ' 桌上的蜡烛，火光在无风的房间里自己摇曳——它在指方向。'; climax += ' 【蜡烛同时熄灭】噗...所有的烛光在同一秒，灭了...' }
+  if (hasLantern) main += ' 墙角那盏泛黄的纸灯笼，只有在特定的位置才会亮起来。'
+  if (hasFlashlight) main += ' 那只时亮时暗的手电筒，只有在黑暗的角落里才能照出东西来。'
+  if (hasBlacklight) main += ' 紫外线灯是你们的眼睛——看不见的东西，它会让它现形。'
+  if (hasTape) main += ' 磁带录音机里有一盘未听完的磁带，它停在了数字的那一句。'
+  if (hasPhono) main += ' 留声机上的唱片，它播放的那首歌，每一句都是一个日期。'
+  if (hasMask) climax += ' 【纸张撕裂声】那张面具...它的嘴角...好像...上扬了一寸...'
+  if (hasCompass) main += ' 那只指针乱转的罗盘，它指向的不是北方，而是房间里藏着数字的方向。'
 
   if (config.horrorLevel >= 3) {
     climax += ' 【脚步声逼近】咚...咚...咚...越来越近了...地板在震颤...它走到你身后了...'
@@ -223,7 +259,6 @@ function generateScript(
   main = replaceMisunderstoodPhrases(main, learning, adjustments)
   climax = replaceMisunderstoodPhrases(climax, learning, adjustments)
   ending = replaceMisunderstoodPhrases(ending, learning, adjustments)
-
   opening = enhanceHorrorPhrases(opening, config, learning, adjustments)
   main = enhanceHorrorPhrases(main, config, learning, adjustments)
   climax = enhanceHorrorPhrases(climax, config, learning, adjustments)
@@ -232,11 +267,7 @@ function generateScript(
   if (learning.lowRatedPuzzleIds.length > 0 && config.difficulty >= 2) {
     const tip = ' 记住：房间里每一个带数字的线索之间，都有关联。按发生顺序排列它们。'
     main = main + tip
-    adjustments.push({
-      type: 'rating_low',
-      adjusted: tip.trim(),
-      reason: `参考${learning.lowRatedPuzzleIds.length}个低分谜题的反馈，增加关联性提示降低卡关率`
-    })
+    adjustments.push({ type: 'rating_low', adjusted: tip.trim(), reason: `参考${learning.lowRatedPuzzleIds.length}个低分谜题的反馈，增加关联性提示降低卡关率` })
   }
 
   return { opening, main, climax, ending }
@@ -253,12 +284,23 @@ function generateHints(
   const hasTalisman = availableProps.includes('talisman')
   const hasLockbox = availableProps.includes('lockbox')
   const hasMirror = availableProps.includes('mirror')
-  const hasDoor = availableProps.includes('iron-door')
+  const hasDoorLock = availableProps.includes('door-lock')
+  const hasIronDoor = availableProps.includes('iron-door')
+  const hasPadlock = availableProps.includes('padlock')
+  const hasCombLock = availableProps.includes('combination-lock')
   const hasNewspaper = availableProps.includes('newspaper')
   const hasDiary = availableProps.includes('diary')
   const hasPhoto = availableProps.includes('photo')
   const hasLetter = availableProps.includes('letter')
   const hasBookshelf = availableProps.includes('bookshelf')
+  const hasCandle = availableProps.includes('candle')
+  const hasLantern = availableProps.includes('lantern')
+  const hasFlashlight = availableProps.includes('flashlight')
+  const hasBlacklight = availableProps.includes('blacklight')
+  const hasTape = availableProps.includes('tape-recorder')
+  const hasPhono = availableProps.includes('phonograph')
+  const hasCompass = availableProps.includes('compass')
+  const hasMask = availableProps.includes('mask')
 
   let hint1 = '【轻微杂音】...仔...细...看...【沙沙声】'
   let hint2 = '【重复关键词】注意细节...注意每一件物品...'
@@ -266,82 +308,105 @@ function generateHints(
 
   const propPriority: Array<{ check: boolean; h1: string; h2: string; h3: string }> = []
 
-  if (hasRadio) {
-    propPriority.push({
-      check: true,
-      h1: '【轻微杂音】...频...率...【电流滋滋】',
-      h2: '【重复关键词】收音机...收音机上的调频旋钮...',
-      h3: '【清晰声音】把收音机的调频旋钮拧到和所有数字线索对应的那个频率上'
-    })
-  }
-  if (hasClock) {
-    propPriority.push({
-      check: true,
-      h1: '【轻微杂音】...时...钟...【齿轮咔哒】',
-      h2: '【重复关键词】凌晨零点...指针停在哪...',
-      h3: '【清晰声音】看看墙上的时钟，时针和分针分别指向的数字，那就是密码的前一半'
-    })
-  }
-  if (hasLockbox) {
-    propPriority.push({
-      check: true,
-      h1: '【金属碰撞声】...盒...子...',
-      h2: '【重复关键词】四位数字...四位数字...',
-      h3: '【清晰声音】把房间里找到的四个数字按时间先后顺序排列，就是锁盒的密码'
-    })
-  }
-  if (hasDoor) {
-    propPriority.push({
-      check: true,
-      h1: '【铁门摩擦声】...门...锁...',
-      h2: '【重复关键词】密码锁...门上的密码锁...',
-      h3: '【清晰声音】铁门上的四位密码锁，就是你们找到的那四个数'
-    })
-  }
-  if (hasTalisman) {
-    propPriority.push({
-      check: true,
-      h1: '【纸页沙沙声】...符...文...',
-      h2: '【重复关键词】符纸上的红色字...红色的字...',
-      h3: '【清晰声音】把符纸上的红色字逐个读出来，每个词对应一件房间里的东西'
-    })
-  }
-  if (hasMirror) {
-    propPriority.push({
-      check: true,
-      h1: '【玻璃轻响】...镜...子...',
-      h2: '【重复关键词】镜子里的倒影...倒影里有什么...',
-      h3: '【清晰声音】把你手里的线索举到镜子前，倒着读就是答案'
-    })
-  }
-  if (hasBookshelf) {
-    propPriority.push({
-      check: true,
-      h1: '【书本哗啦】...书...架...',
-      h2: '【重复关键词】那本缺了页的书...缺的页码...',
-      h3: '【清晰声音】书架上按顺序排列的书脊数字，就是你们要找的'
-    })
-  }
-  if (hasNewspaper || hasDiary || hasPhoto || hasLetter) {
-    propPriority.push({
-      check: true,
-      h1: '【纸张翻动】...文...字...',
-      h2: '【重复关键词】日期...数字...所有写着数字的地方...',
-      h3: '【清晰声音】把所有纸上的日期、年份、页码都抄下来，它们是答案'
-    })
-  }
+  if (hasDoorLock || hasIronDoor) propPriority.push({ check: true,
+    h1: '【铁门摩擦声】...密...码...锁...',
+    h2: '【重复关键词】门上的四位密码...四位...',
+    h3: '【清晰声音】铁门上的密码锁=房间里找到的四个数字，直接按发生顺序输进去'
+  })
+  if (hasPadlock) propPriority.push({ check: true,
+    h1: '【金属碰撞声】...铜...锁...',
+    h2: '【重复关键词】挂锁的密码...挂锁上的刻度...',
+    h3: '【清晰声音】那把铜挂锁=三位数字密码，去看烛台上刻着的数字'
+  })
+  if (hasCombLock) propPriority.push({ check: true,
+    h1: '【转盘转动声】...转...盘...',
+    h2: '【重复关键词】左右左右...三组数...',
+    h3: '【清晰声音】转盘锁=先顺后逆再顺，依次转到10→04→45三组刻度'
+  })
+  if (hasRadio) propPriority.push({ check: true,
+    h1: '【轻微杂音】...频...率...【电流滋滋】',
+    h2: '【重复关键词】收音机...收音机上的调频旋钮...',
+    h3: '【清晰声音】把收音机的调频旋钮拧到和所有数字线索对应的那个频率上'
+  })
+  if (hasClock) propPriority.push({ check: true,
+    h1: '【齿轮咔哒】...时...钟...',
+    h2: '【重复关键词】凌晨零点...指针停在哪...',
+    h3: '【清晰声音】看看墙上的时钟，时针和分针分别指向的数字，那就是密码的前一半'
+  })
+  if (hasLockbox) propPriority.push({ check: true,
+    h1: '【金属碰撞声】...盒...子...',
+    h2: '【重复关键词】四位数字...四位数字...',
+    h3: '【清晰声音】把房间里找到的四个数字按时间先后顺序排列，就是锁盒的密码'
+  })
+  if (hasTalisman) propPriority.push({ check: true,
+    h1: '【纸页沙沙声】...符...文...',
+    h2: '【重复关键词】符纸上的红色字...红色的字...',
+    h3: '【清晰声音】把符纸上的红色字逐个读出来，每个词对应一件房间里的东西'
+  })
+  if (hasMirror) propPriority.push({ check: true,
+    h1: '【玻璃轻响】...镜...子...',
+    h2: '【重复关键词】镜子里的倒影...倒影里有什么...',
+    h3: '【清晰声音】把你手里的线索举到镜子前，倒着读就是答案'
+  })
+  if (hasBookshelf) propPriority.push({ check: true,
+    h1: '【书本哗啦】...书...架...',
+    h2: '【重复关键词】那本缺了页的书...缺的页码...',
+    h3: '【清晰声音】书架上按顺序排列的书脊数字，就是你们要找的'
+  })
+  if (hasCandle) propPriority.push({ check: true,
+    h1: '【蜡烛噼啪声】...蜡...烛...',
+    h2: '【重复关键词】烛台底座...底座上的刻字...',
+    h3: '【清晰声音】把蜡烛拿起来，烛台底座反面刻着三位数字，那是挂锁的密码'
+  })
+  if (hasLantern) propPriority.push({ check: true,
+    h1: '【纸张晃动】...灯...笼...',
+    h2: '【重复关键词】灯笼的骨架...骨架上的数字...',
+    h3: '【清晰声音】点亮灯笼后透过纸看，竹骨架拼成了四个数字，那是铁门的密码'
+  })
+  if (hasFlashlight) propPriority.push({ check: true,
+    h1: '【开关咔哒】...手...电...',
+    h2: '【重复关键词】关掉房间灯...关掉之后照...',
+    h3: '【清晰声音】把房间所有灯关掉，手电筒往墙上照，会出现隐形墨水写的四个数字'
+  })
+  if (hasBlacklight) propPriority.push({ check: true,
+    h1: '【紫外线嗡鸣】...紫...外...线...',
+    h2: '【重复关键词】紫外线...照每一件东西...',
+    h3: '【清晰声音】打开紫外线灯，逐个照每一面墙和每一张纸，隐形数字会显蓝色'
+  })
+  if (hasTape) propPriority.push({ check: true,
+    h1: '【磁带转动】...磁...带...',
+    h2: '【重复关键词】倒带...倒回开头...',
+    h3: '【清晰声音】把磁带倒回最开头按播放，主播念的前四个数字就是密码'
+  })
+  if (hasPhono) propPriority.push({ check: true,
+    h1: '【唱片嘶嘶】...唱...片...',
+    h2: '【重复关键词】第几句...第几段...',
+    h3: '【清晰声音】唱片每一段歌词开头的字首，按顺序对应1045四个数字'
+  })
+  if (hasCompass) propPriority.push({ check: true,
+    h1: '【指针咔哒】...罗...盘...',
+    h2: '【重复关键词】指针停的方位...',
+    h3: '【清晰声音】罗盘指针最终停下的方位对应钟表上的数字（北=12/东=3/南=6/西=9）'
+  })
+  if (hasMask) propPriority.push({ check: true,
+    h1: '【纸张摩擦】...面...具...',
+    h2: '【重复关键词】面具背面...面具的额角...',
+    h3: '【清晰声音】翻到面具背面，额角位置用指甲刻着四个小字，读出来是数字'
+  })
+  if (hasNewspaper || hasDiary || hasPhoto || hasLetter) propPriority.push({ check: true,
+    h1: '【纸张翻动】...文...字...',
+    h2: '【重复关键词】日期...数字...所有写着数字的地方...',
+    h3: '【清晰声音】把所有纸上的日期、年份、页码都抄下来，它们是答案'
+  })
 
   if (propPriority.length > 0) {
     const chosen = propPriority[0]
-    hint1 = chosen.h1
-    hint2 = chosen.h2
-    hint3 = chosen.h3
+    hint1 = chosen.h1; hint2 = chosen.h2; hint3 = chosen.h3
   }
 
   hint1 = replaceMisunderstoodPhrases(hint1, learning, adjustments)
   hint2 = replaceMisunderstoodPhrases(hint2, learning, adjustments)
   hint3 = replaceMisunderstoodPhrases(hint3, learning, adjustments)
-
   hint1 = enhanceHorrorPhrases(hint1, config, learning, adjustments)
   hint2 = enhanceHorrorPhrases(hint2, config, learning, adjustments)
   hint3 = enhanceHorrorPhrases(hint3, config, learning, adjustments)
@@ -363,7 +428,10 @@ function generatePlayerCards(
   const hasRadio = availableProps.includes('radio')
   const hasClock = availableProps.includes('wall-clock')
   const hasLockbox = availableProps.includes('lockbox')
-  const hasDoor = availableProps.includes('iron-door')
+  const hasDoorLock = availableProps.includes('door-lock')
+  const hasIronDoor = availableProps.includes('iron-door')
+  const hasPadlock = availableProps.includes('padlock')
+  const hasCombLock = availableProps.includes('combination-lock')
   const hasTalisman = availableProps.includes('talisman')
   const hasNewspaper = availableProps.includes('newspaper')
   const hasDiary = availableProps.includes('diary')
@@ -374,7 +442,16 @@ function generatePlayerCards(
   const hasConsole = availableProps.includes('audio-console')
   const hasBookshelf = availableProps.includes('bookshelf')
   const hasChandelier = availableProps.includes('chandelier')
-  const hasBell = availableProps.includes('hand-bell')
+  const hasBell = availableProps.includes('hand-bell') || availableProps.includes('bell')
+  const hasCandle = availableProps.includes('candle')
+  const hasLantern = availableProps.includes('lantern')
+  const hasFlashlight = availableProps.includes('flashlight')
+  const hasBlacklight = availableProps.includes('blacklight')
+  const hasTape = availableProps.includes('tape-recorder')
+  const hasPhono = availableProps.includes('phonograph')
+  const hasCompass = availableProps.includes('compass')
+  const hasMask = availableProps.includes('mask')
+  const hasKey = availableProps.includes('key')
 
   if (hasTalisman) {
     let content = '一张泛黄的符纸，四角已经微微卷起，上面用朱砂画着奇怪的红色符文，最下面写着：「按时间的顺序，才能打开那扇门」'
@@ -385,9 +462,9 @@ function generatePlayerCards(
     } else if (hasClock && hasLockbox) {
       content = '一张泛黄的符纸，上面用朱砂写着：「时间停下的那一刻，就是锁盒开启的钥匙」\n四角的红色符文，仿佛在微微跳动...'
       hint = '时钟的指针停在几点几分？那四个数字就是锁盒的密码'
-    } else if (hasClock && hasDoor) {
-      content = '一张泛黄的符纸，上面用朱砂写着：「以时间为钥，方能开启那扇铁门」\n四角符文泛着暗红色的光...'
-      hint = '时钟的时针+分针数字，就是铁门密码锁的答案'
+    } else if ((hasClock || hasCandle || hasLantern) && (hasDoorLock || hasIronDoor)) {
+      content = '一张泛黄的符纸，上面用朱砂写着：「以火为引，以时为钥，方能开启那扇铁门」\n四角符文泛着暗红色的光...'
+      hint = '先点亮蜡烛/灯笼（以火为引），再看时钟/烛台/灯笼骨架的数字，就是铁门密码'
     } else if (hasClock) {
       content = '一张泛黄的符纸，上面用朱砂写着：「答案，藏在时间停下的那一瞬间」\n四角画着奇怪的红色符文...'
       hint = '直接去看墙上的时钟，它停在几点几分，那就是答案'
@@ -398,6 +475,146 @@ function generatePlayerCards(
     content = replaceMisunderstoodPhrases(content, learning, adjustments)
     hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
     cards.push({ id: 'card-talisman', title: '符纸', content, hint })
+  }
+
+  if (hasCandle) {
+    let content = '一根半燃过的白蜡烛，放在一个老旧的铜制烛台上，蜡油已经顺着烛台流成了奇怪的图案\n烛台的底座沉甸甸的，似乎里面藏着什么...'
+    let hint = '把蜡烛拿起来，翻过烛台看底座，上面应该刻着数字'
+    if (hasPadlock) {
+      content = '一根白蜡烛稳稳立在铜制烛台上，蜡油流下来的痕迹好像刻意被摆成了三个数字的形状\n把蜡烛拔出来——烛台中心空心，塞着一张卷起来的纸条，写着：「挂锁=045」'
+      hint = '烛台底座反刻的0/4/5 + 时钟的1，就是挂锁的三位密码'
+    } else if (hasDoorLock || hasIronDoor) {
+      content = '三根蜡烛并排放在桌上，分别烧到了不同高度——第一根刚点（1寸），第二根（0），第三根（4）第四根（5）都快烧尽了\n烛台底座正面刻着一行小字：「高度，就是密码」'
+      hint = '三根蜡烛的高度（1、0、4、5）= 铁门四位密码，按蜡烛从左到右顺序输'
+    } else if (hasBlacklight) {
+      content = '一根蜡烛，蜡烛身上好像有颜色不一样的斑块，但正常光下看不清是什么\n旁边用铅笔写着：「烧到一寸，关灯照一照」'
+      hint = '点蜡烛等它烧1寸，关灯开紫外线灯，蜡烛身上会显现数字'
+    }
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-candle', title: '蜡烛', content, hint })
+  }
+
+  if (hasLantern) {
+    let content = '一盏泛黄的纸灯笼，竹骨架被蜡烛熏得发黑\n凑近了仔细看——竹骨架的横竖排列，似乎组成了什么字符...'
+    let hint = '点亮灯笼后从正前方透过纸看，竹骨架是数字形状'
+    if (hasDoorLock || hasIronDoor) {
+      content = '一盏大型的四方形纸灯笼挂在门口，竹骨架由四根竖条和若干横条组成\n点亮蜡烛后——光线从竹骨架缝隙里透出来，在地上投下四个清晰的数字：1 0 4 5\n灯笼底部写着：「向门而生，光明即是出口」'
+      hint = '灯光投下的数字就是铁门密码：1045，直接按顺序输入'
+    } else if (hasCombLock) {
+      content = '一盏三层纸灯笼，每层骨架上都有一个圈，圈上有几个小孔，小孔用线做了标记\n最上层标记在第1格，第二层在第4格，第三层在第5格...'
+      hint = '转盘锁：先顺转到1，再逆转到04，再顺转到45（灯笼三层对应三次旋转方向）'
+    }
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-lantern', title: '手提灯笼', content, hint })
+  }
+
+  if (hasFlashlight) {
+    let content = '一把塑料外壳的老旧手电筒，开关有点松，时亮时暗\n灯头玻璃内侧好像印着什么字——但只有打开照在黑暗的地方才看得清...'
+    let hint = '手电筒打开往最黑的角落照，光投在墙上的影子有数字形状'
+    if (hasBlacklight) {
+      content = '一把表面生锈的手电筒，灯头外圈装的是紫外LED（不是普通白光）\n按开关咔哒一声——墙上立刻显出蓝色荧光的四位数：1045，旁边还画着一个箭头指向墙角...'
+      hint = '手电筒=紫外线手电筒，照在墙上显形的1045就是核心密码'
+    } else if (hasLockbox) {
+      content = '一把手电筒，握把底部拧开后有一个小格子，里面塞着迷你的刻字金属牌，刻着：「锁盒密码：第1位=1，第2位=0，第3/4位=我的灯泡型号」\n灯泡上刻着：W-4.5V...'
+      hint = '握把内金属牌+灯泡型号4.5 → 锁盒密码1045'
+    }
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-flashlight', title: '手电筒', content, hint })
+  }
+
+  if (hasBlacklight) {
+    let content = '一把细长的紫外线灯管手电筒，外壳上贴着黄色警告标识\n灯头旁边用马克笔写着：「别对着眼睛，对着墙」'
+    let hint = '按下开关后，把房间所有能看见的表面都照一遍，隐形墨水会显蓝色'
+    if (hasNewspaper || hasDiary || hasPhoto || hasLetter) {
+      content = '一把紫外线灯，旁边的便签纸上用铅笔写着：「记者有个习惯——重要内容不用墨水写」\n打开灯照向所有纸质物品——旧报纸空白处、日记本边缘、照片背面、信纸落款...\n每一处都显示了一个蓝色的数字...'
+      hint = '紫外线照每一张纸：报纸1，日记0，照片4，信件5 → 1045'
+    } else if (hasPadlock || hasCombLock) {
+      content = '一把紫外线灯，底部写着：「锁匠喜欢在锁的反面留记号」\n对着挂锁/转盘锁的背面（不是正面那面）照——锁底用隐形墨水写着开锁顺序和数字...'
+      hint = '紫外线照锁的反面，直接看到密码/旋转顺序'
+    }
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-blacklight', title: '紫外线灯', content, hint })
+  }
+
+  if (hasPadlock) {
+    let content = '一把沉甸甸的铜制老挂锁，锁身被摩挲得很亮，正面刻着一个骷髅图案\n数字转盘从0-9，卡在三位数字上\n锁的侧面用指甲划了很浅的三个刻痕：「一浅 · 二深 · 三最深」'
+    let hint = '三位数字密码，刻痕深度=数字大小（浅=小/深=大），或直接去看烛台/挂锁钥匙上的数字'
+    if (hasCandle || hasClock) {
+      content = '一把铜挂锁锁着的小柜子，柜门上写着：「等灯亮了，看时间开」\n挂锁是三位数的，锁身背面隐约刻着：「C-A-N」三个字母'
+      hint = '挂锁三位数=时钟停的时10 + 分45 → 取三位就是045'
+    } else if (hasKey) {
+      content = '一把锁死的铜挂锁，钥匙就放在桌上的碟子里，但钥匙上缠着红线打了三个结\n每个结上都有用黑色钢笔写的微型数字，凑近才能看清...'
+      hint = '解开红线，三个结上的微型数字=挂锁的三位密码'
+    }
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-padlock', title: '挂锁', content, hint })
+  }
+
+  if (hasCombLock) {
+    let content = '一只古旧的木箱子，锁是金属转盘密码锁，转盘上有0-9的刻度\n转盘外圈有三个小箭头，分别标着：「顺→逆→顺」三个字，旁边写着：「转三圈，停下来」'
+    let hint = '操作规则：先顺时针转3圈停在第一数字→逆时针转2圈停在第二数字→顺时针直接转第三数字'
+    if (hasBookshelf || hasDiary || hasNewspaper) {
+      content = '箱子上的转盘密码锁，旁边用麻绳挂着一块小木牌，木牌两面都写着字\n正面：「书之第X卷，记于第X页，生于第X年」\n背面：「10年第04卷第45页」'
+      hint = '转盘=三圈分别对应10 → 04 → 45，先顺10 → 再逆04 → 再顺45，开锁'
+    } else if (hasCompass) {
+      content = '转盘密码锁的转盘上刻着四个方位的小字：N、E、S、W\n旁边贴着便签：「罗盘指哪转哪，第一圈看北方」'
+      hint = '按罗盘方位：N(12点=1) → E(3点=04?) → S(6=45?) 三层对应三次旋转刻度'
+    }
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-combinationlock', title: '转盘密码锁', content, hint })
+  }
+
+  if (hasDoorLock || hasIronDoor) {
+    let content = '一扇厚重的铁门上装着电子密码锁，键盘是0-9四个一排的数字键，锁上方有一个小小的红色指示灯一直闪\n门的右侧（输密码的高度）用油漆写着四个字：「时 · 刻 · 频 · 率」\n油漆下面，隐约能看到四个被刮掉的数字刻痕...'
+    let hint = '铁门的四位密码，直接对应房间里四个带数字的线索（时钟时刻/收音机频率/日期年份等），按左到右顺序'
+    if (hasClock && (hasCandle || hasLantern)) {
+      content = '一扇黑色大铁门，电子密码锁上方贴着一张泛黄的值班表：\n「01：00 夜班交接 — 点蜡烛\n00：00 夜间巡逻 — 提灯笼\n04：00 铁门巡检\n05：00 换班休息」\n值班表右下角用红笔圈了这四个时间：「按顺序输」'
+      hint = '四个时间点= 01/00/04/05 → 取第一位就是1 0 4 5，铁门密码'
+    } else if (hasRadio && hasClock) {
+      content = '铁门密码锁上方贴了一张报纸剪报，只圈了一条新闻：\n「本报讯 10月4日，K.I.L.L电台主播林某最后一次广播结束于凌晨0点45分，频率停在104.5MHz」\n剪报背面写着：「先有日，后有时，再有频率」'
+      hint = '三个数字都是1/0/4/5 → 铁门输1045'
+    }
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-doorlock', title: '铁门密码锁', content, hint })
+  }
+
+  if (hasTape) {
+    let content = '一台磁带录音机，磁带卡在里面，播放键按下去能听到沙沙声\n快进/快退按钮旁边贴了标签：「A面=开始前10分钟，B面=失踪前5分钟」\n磁带正面写着铅笔字：「倒到最开头的地方——那个数字，念了三遍」'
+    let hint = '把磁带倒回A面最开头，第一句话就是主播念的四个数字'
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-tape', title: '磁带录音机', content, hint })
+  }
+
+  if (hasPhono) {
+    let content = '一台老式留声机，上面放着一张黑色78转唱片，唱片标签上写着歌名：《第十首·第零章·第四章·第五节》\n唱针旁边有一张纸条：「每一节的第一个字，都是数字」\n唱片慢慢转着...'
+    let hint = '歌名里的章节号=10/0/4/5 → 取数字部分1 0 4 5'
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-phonograph', title: '留声机', content, hint })
+  }
+
+  if (hasCompass) {
+    let content = '一只旧罗盘放在桌子中央，指针疯了一样乱转，时不时咔哒一下卡在某个方位\n罗盘盘面的东南西北四个字，每个字旁边都用极小的字刻着一个数字：「N=1、E=0、S=4、W=5」\n罗盘背面写着：「等它累了停下来，按它最后停的四个方向顺序读」'
+    let hint = '罗盘最后会依次停在N→E→S→W，对应刻的数字就是1045'
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-compass', title: '指南针', content, hint })
+  }
+
+  if (hasMask) {
+    let content = '一张诡异的人脸面具挂在墙上，面具的表情是笑着的，但嘴角的弧度很不自然\n面具的眼睛是空的，眼眶里塞着两张卷起来的小纸条\n面具背面（贴着墙的那面），用红色指甲油写着四个大字：「壹 〇 肆 伍」'
+    let hint = '背面四个汉字是数字大写：壹=1 / 〇=0 / 肆=4 / 伍=5，就是核心密码'
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-mask', title: '面具', content, hint })
   }
 
   if (hasNewspaper) {
@@ -448,7 +665,7 @@ function generatePlayerCards(
     if (hasLockbox) {
       content = '「我亲爱的继任者：\n当你读到这封信时，我应该已经不在了。\n记住——1、0、4、5，这是唯一能打开那只盒子的钥匙。\n打开之后，立刻烧掉里面的东西，千万不要读。\n愿你比我幸运。」'
       hint = '信里直接给了四个数字 1 0 4 5，直接去开密码锁盒'
-    } else if (hasDoor) {
+    } else if (hasDoorLock || hasIronDoor) {
       content = '「我亲爱的继任者：\n当你读到这封信时，我应该已经不在了。\n记住——1、0、4、5，按顺序输进门上的密码锁。\n门开了之后，什么都别回头看，直接跑。」'
       hint = '1 0 4 5 直接输进铁门的密码锁'
     }
@@ -502,7 +719,7 @@ function generatePlayerCards(
   if (hasBookshelf) {
     let content = '一整面墙的旧书架，大部分书脊都已经褪色\n只有一本书抽出来的距离比别的都多一点，书脊上写着：「午夜必读书目 第七卷」'
     let hint = '把那本抽出来一截的书抽出来——书里夹着纸条，书脊数字也是线索'
-    if (hasLockbox) {
+    if (hasLockbox || hasCombLock) {
       content = '书架上按年份摆了几十本旧日记，每本的书脊上都有两位数字编号\n唯独编号第10、第04、第45这三本的摆放顺序和年份不一致——它们被人故意调换了位置...'
       hint = '调换过位置的三本书的编号：10、04、45 → 四个数字 1 0 4 5'
     }
@@ -519,34 +736,22 @@ function generatePlayerCards(
     cards.push({ id: 'card-chandelier', title: '水晶吊灯', content, hint })
   }
 
-  if (cards.length === 0) {
-    cards.push({
-      id: 'card-default-1',
-      title: '墙角的纸条',
-      content: '「那个秘密，就藏在最显眼的地方\n人们总是忽视眼前的东西\n灯灭的时候，你会看见」',
-      hint: '灯灭的时候，仔细看房间最中间的位置'
-    })
-    cards.push({
-      id: 'card-default-2',
-      title: '门缝下塞进来的纸',
-      content: '「不要相信这里的任何一面镜子\n不要数到第七下\n不要让门关上第三次」',
-      hint: '这里面有三个数字线索，注意"第七""第三"'
-    })
-    if (hasDoor) {
-      cards.push({
-        id: 'card-default-door',
-        title: '贴在门后的胶带纸',
-        content: '「出去的方法：\n第一次关灯后等10秒\n第二次关灯后等4秒\n第三次关灯后门就开了」',
-        hint: '10 + 4 → 四个数字 1 0 4 5 是密码'
-      })
-    }
+  if (hasKey) {
+    let content = '一把锈迹斑斑的老式铜钥匙，就放在进门最显眼的碟子上\n钥匙的齿纹很深，但奇怪的是——这把钥匙似乎没有对应任何能开的锁\n钥匙的挂圈上缠着细细的铜丝，铜丝绕了1圈、0圈、4圈、5圈...'
+    let hint = '铜丝绕的圈数就是四个数字 1/0/4/5，钥匙本身只是一个假线索，用来让玩家浪费时间开柜子'
+    content = replaceMisunderstoodPhrases(content, learning, adjustments)
+    hint = replaceMisunderstoodPhrases(hint, learning, adjustments)
+    cards.push({ id: 'card-key', title: '老式钥匙', content, hint })
   }
 
-  cards.forEach((card, idx) => {
+  if (cards.length === 0) {
+    cards.push({ id: 'card-default-1', title: '墙角的纸条', content: '「那个秘密，就藏在最显眼的地方\n人们总是忽视眼前的东西\n灯灭的时候，你会看见」', hint: '灯灭的时候，仔细看房间最中间的位置' })
+    cards.push({ id: 'card-default-2', title: '门缝下塞进来的纸', content: '「不要相信这里的任何一面镜子\n不要数到第七下\n不要让门关上第三次」', hint: '这里面有三个数字线索，注意"第七""第三"' })
+  }
+
+  cards.forEach((card) => {
     card.content = enhanceHorrorPhrases(card.content, { ...config, horrorLevel: Math.max(1, config.horrorLevel - 1) }, learning, adjustments)
-    if (card.hint) {
-      card.hint = enhanceHorrorPhrases(card.hint, { ...config, horrorLevel: Math.max(1, config.horrorLevel - 1) }, learning, adjustments)
-    }
+    if (card.hint) card.hint = enhanceHorrorPhrases(card.hint, { ...config, horrorLevel: Math.max(1, config.horrorLevel - 1) }, learning, adjustments)
   })
 
   return cards
@@ -566,7 +771,8 @@ function generateHostSteps(
   const hasCandle = availableProps.includes('candle')
   const hasBlacklight = availableProps.includes('blacklight')
   const hasBell = availableProps.includes('bell') || availableProps.includes('hand-bell')
-  const hasDoor = availableProps.includes('iron-door')
+  const hasDoorLock = availableProps.includes('door-lock')
+  const hasIronDoor = availableProps.includes('iron-door')
   const hasMicrophone = availableProps.includes('microphone')
   const hasHeadphone = availableProps.includes('headphone')
   const hasConsole = availableProps.includes('audio-console')
@@ -574,95 +780,74 @@ function generateHostSteps(
   const hasMirror = availableProps.includes('mirror')
   const hasBookshelf = availableProps.includes('bookshelf')
   const hasChandelier = availableProps.includes('chandelier')
+  const hasLantern = availableProps.includes('lantern')
+  const hasFlashlight = availableProps.includes('flashlight')
+  const hasPadlock = availableProps.includes('padlock')
+  const hasCombLock = availableProps.includes('combination-lock')
+  const hasTape = availableProps.includes('tape-recorder')
+  const hasPhono = availableProps.includes('phonograph')
+  const hasCompass = availableProps.includes('compass')
+  const hasMask = availableProps.includes('mask')
+  const hasKey = availableProps.includes('key')
 
   prep.push('检查所有已勾选道具是否到位，核对清单')
-  if (hasRadio) {
-    prep.push('确认收音机可以正常调节频率，电源通电，扬声器无杂音')
-    prep.push('预设几个干扰频率增加难度（但保证正确频率可以清晰收到）')
-    prep.push('正确频率的音频内容提前录制或准备好备用')
-  }
-  if (hasClock) {
-    prep.push('将时钟指针调到与谜题答案对应的时间位置')
-    prep.push('取下时钟电池或确认时钟已经完全停止走动')
-  }
-  if (hasLockbox) {
-    prep.push('设置好锁盒的四位密码，确认开关顺畅')
-    prep.push('放入下一关的线索纸条或关键物品进入锁盒')
-    prep.push('打乱密码盘到随机状态，确保不是初始状态')
-  }
-  if (hasDoor) {
-    prep.push('设置好铁门密码锁的四位密码')
-    prep.push('测试密码锁开锁闭锁功能正常')
-    prep.push('确认门内无其他安全隐患，应急通道畅通')
-  }
-  if (hasCandle) {
-    prep.push('摆放好蜡烛在防火安全的位置，远离窗帘、纸张等易燃物')
-    prep.push('提前准备打火机或长火柴放在随手可及的位置')
-  }
-  if (hasBlacklight) {
-    prep.push('装好紫外线灯电池，反复开关确认能正常点亮')
-    prep.push('在预设的关键位置用隐形墨水写下对应提示内容')
-    prep.push('用黑光灯照一遍确认内容可见、位置合理')
-  }
-  if (hasBell) {
-    prep.push('将手摇铃铛放在门外或主持人能轻松够到的暗角位置')
-    prep.push('提前试摇确认铃铛的响度合适（能听到但不刺耳）')
-  }
-  if (hasTalisman) {
-    prep.push('将符纸放在玩家视线可及但需要走近才能看清的位置')
-    prep.push('确认符纸上文字清晰，没有被遮挡')
-  }
-  if (hasMirror) {
-    prep.push('检查镜子位置确保玩家能正面接近，没有尖锐边缘')
-    prep.push('如果是道具镜，确认稳固不会倾倒')
-  }
-  if (hasMicrophone) {
-    prep.push('将麦克风放在桌面上或支架上，网罩内的纸条提前塞入')
-    prep.push('确认支架上的刻字清晰可见（或贴纸贴好）')
-  }
-  if (hasHeadphone) {
-    prep.push('耳机插头插在对应设备上（收音机/播音控制台/预录设备）')
-    prep.push('测试耳机内容能正常播放，音量调节到略大于环境音')
-  }
-  if (hasConsole) {
-    prep.push('播音控制台通电，指示灯处于闪烁待机状态')
-    prep.push('确认输入键盘可按、屏幕显示正确提示文字')
-  }
-  if (hasBookshelf) {
-    prep.push('关键的那几本书（被抽出的、调换位置的）摆放到对应位置')
-    prep.push('其他书摆齐，确保关键书的异常之处足够明显但不突兀')
-  }
-  if (hasChandelier) {
-    prep.push('水晶吊灯上标记位置的水晶擦干净（或贴反光贴纸）')
-    prep.push('确认吊灯稳固无坠落风险，灯光亮度合适')
-  }
-  prep.push('房间灯光调至预设亮度，确认整体氛围符合恐怖等级要求')
-  prep.push('主持人的对讲机、耳机、提词器调试完毕，通讯畅通')
+  if (hasRadio) { prep.push('确认收音机可调频率、电源通、扬声器无杂音'); prep.push('预设几个干扰频率增加难度，保证正确频率清晰收到'); prep.push('正确频率的音频内容提前录制备用') }
+  if (hasClock) { prep.push('时钟指针调到 10:45 对应谜题答案'); prep.push('取下电池确认时钟完全停止走动') }
+  if (hasLockbox) { prep.push('锁盒设置四位密码 1045，确认开关顺畅'); prep.push('放入下一关线索纸条'); prep.push('打乱密码盘到随机状态') }
+  if (hasDoorLock || hasIronDoor) { prep.push('铁门电子密码锁设置四位密码 1045'); prep.push('反复测试开锁闭锁 3 次以上，确认无故障'); prep.push('关闭铁门上锁，确认应急通道畅通') }
+  if (hasPadlock) { prep.push('挂锁设置三位密码 045（时钟1补前位）'); prep.push('锁在对应柜子/抽屉上，打乱密码') }
+  if (hasCombLock) { prep.push('转盘锁三组刻度 10/04/45，方向顺→逆→顺'); prep.push('反复测试 3 次确保开锁流程正确，否则卡死') }
+  if (hasCandle) { prep.push('蜡烛放防火安全的烛台，远离易燃物'); prep.push('烛台底座刻字或贴微型数字贴纸，玩家走近可见但不明显'); prep.push('主持人用打火机/长火柴放随手位置') }
+  if (hasLantern) { prep.push('灯笼内部点蜡烛或装电子蜡烛，确认竹骨架投下 1045 数字清晰'); prep.push('挂在 1.5-1.8m 玩家平视略低位置，确保投影清晰') }
+  if (hasFlashlight) { prep.push('手电池装好，时亮时暗的用接触不良旧电池模拟'); prep.push('紫外线款需确认紫外LED点亮（用白纸测试显蓝）') }
+  if (hasBlacklight) { prep.push('紫外灯电池装好开关正常'); prep.push('预设位置（报纸空白/日记页边/锁背面）用隐形墨水写下 1/0/4/5 四个数字'); prep.push('黑光灯照一遍确认内容可见位置合理') }
+  if (hasTape) { prep.push('磁带开头录好主播念 1、0、4、5 三遍，插回录音机'); prep.push('录音机播放/倒带正常，音量走近能听清') }
+  if (hasPhono) { prep.push('唱片标题手写 "第10首/第0章/第4节/第5段" 明显但不突兀'); prep.push('留声机播放正常，唱针不要太脏') }
+  if (hasBell) { prep.push('铃铛放门外或主持人暗角'); prep.push('试摇确认响度合适（能听到但不刺耳）') }
+  if (hasTalisman) { prep.push('符纸放玩家视线可及但走近才看清的位置'); prep.push('确认符纸文字清晰无遮挡') }
+  if (hasMirror) { prep.push('镜子位置确保正面能接近，无尖锐边缘'); prep.push('道具镜确认稳固不倾倒') }
+  if (hasMicrophone) { prep.push('麦克风放桌面/支架，网罩内塞纸条'); prep.push('支架刻字或 104.5 贴纸清晰可见') }
+  if (hasHeadphone) { prep.push('耳机插头插对应设备（收音机/控制台/预录）'); prep.push('测试耳机内容正常播放，音量略大于环境音') }
+  if (hasConsole) { prep.push('播音控制台通电，指示灯闪烁待机'); prep.push('键盘可按、屏幕显示正确提示文字') }
+  if (hasBookshelf) { prep.push('编号 10/04/45 三本关键书调换顺序摆放，其余摆齐'); prep.push('确保异常明显（至少突出5mm或颜色不同）') }
+  if (hasChandelier) { prep.push('水晶吊灯标记位置水晶擦干净或贴反光贴纸组成 1045 形状'); prep.push('确认吊灯稳固无坠落风险，灯光合适') }
+  if (hasCompass) { prep.push('罗盘内置磁铁贴 N/E/S/W 对应 1/0/4/5 方向'); prep.push('测试玩家拿起来先乱转，10秒后依次停四个方向') }
+  if (hasMask) { prep.push('面具背面红色指甲油写"壹 〇 肆 伍"四汉字大写，正面眼眶塞纸条'); prep.push('正面朝玩家挂墙上，背面隐藏') }
+  if (hasKey) { prep.push('钥匙挂圈铜丝绕 1/0/4/5 圈打结，放进门最显眼碟子里'); prep.push('确认钥匙无法开启任何真实锁（故意假线索迷惑）') }
+  prep.push('房间灯光调至预设亮度，整体氛围符合恐怖等级')
+  prep.push('主持人对讲机、耳机、提词器调试完毕，通讯畅通')
   prep.push('应急出口标识清晰，灭火器、急救包位置确认')
 
-  during.push('开场白结束后保持安静，主持人在后台观察玩家反应和动线')
-  if (hasClock) during.push('留意玩家是否主动留意到时钟已经停止、指针位置异常')
-  if (hasRadio) during.push('在玩家开始翻找时，偶尔从背景放出音量由低到高的杂音，引导去收音机')
-  if (hasLockbox) during.push('玩家拿到锁盒后可通过提示引导："重量很轻，里面是纸"')
-  if (hasDoor) during.push('玩家第一次接触铁门时，可给一次"咔哒"声反馈')
-  if (hasMirror) during.push('玩家盯着镜子超过5秒时，后台可给一次轻微灯光闪烁')
-  if (hasTalisman) during.push('玩家拿起符纸时，背景可加一次轻微的纸页翻动音效')
+  during.push('开场白结束后保持安静，主持人后台观察玩家反应和动线')
+  if (hasClock) during.push('留意玩家是否主动注意到时钟停止、指针异常')
+  if (hasRadio) during.push('玩家开始翻找时，偶尔背景放音量由低到高的杂音，引导去收音机')
+  if (hasLockbox) during.push('玩家拿到锁盒后可提示："重量很轻，里面是纸"')
+  if (hasDoorLock || hasIronDoor) during.push('玩家第一次接触铁门时，给一次"咔哒"声反馈')
+  if (hasPadlock) during.push('玩家拿起挂锁时，背景可加金属碰撞轻响')
+  if (hasCombLock) during.push('玩家拨转盘超过5次仍未开时，可提示方向："顺逆顺，三圈"')
+  if (hasMirror) during.push('玩家盯镜子超5秒时，后台可一次轻微灯光闪烁')
+  if (hasTalisman) during.push('玩家拿起符纸时，背景加一次纸页翻动音效')
   if (hasBookshelf) during.push('玩家靠近书架时，可加一次书本掉落的轻响')
-  during.push('严格按照3分钟/6分钟/10分钟的节点给出对应等级的提示')
+  during.push('严格按照 3 分钟 / 6 分钟 / 10 分钟节点给对应等级提示')
   if (hasCandle) during.push('玩家靠近关键区域时，主持人后台轻轻吹动蜡烛让火光摇曳')
-  if (hasBell) during.push('给出二级提示的同时，门外摇动1次铃铛营造压迫感')
-  during.push('全程留意玩家的恐怖耐受度（脸色/呼吸/尖叫/要求暂停），必要时临时降低恐怖等级，打开灯光')
-  during.push('玩家解开核心谜题的瞬间，及时给出正向反馈（音效/台词/灯光变化）')
-  during.push('游戏全程确保至少一名工作人员能看到玩家全景，防止意外发生')
+  if (hasBell) during.push('给出二级提示的同时，门外摇动 1 次铃铛营造压迫感')
+  if (hasLantern) during.push('玩家经过灯笼时，后台轻微晃动让它发出纸声')
+  if (hasFlashlight || hasBlacklight) during.push('超过5分钟没关灯的，可提示："有时候，黑暗里的东西比光明里更清楚"')
+  during.push('全程留意玩家恐怖耐受度（脸色/呼吸/尖叫/要求暂停），必要时临时降低恐怖等级、打开灯光')
+  during.push('玩家解开核心谜题的瞬间，及时给正向反馈（音效/台词/灯光变化）')
+  during.push('游戏全程确保至少一名工作人员能看到玩家全景，防止意外')
 
   cleanup.push('玩家全部离场后，首先打开全部房间灯光，通风')
   cleanup.push('检查每位玩家随身物品，确认没有带任何道具离场')
-  if (hasRadio) cleanup.push('关闭收音机电源，拔下电源插头，调回日常频段')
+  if (hasRadio) cleanup.push('关收音机电源，拔插头，调回日常频段')
   if (hasClock) cleanup.push('装回时钟电池，恢复正常走时，对准当前时间')
   if (hasLockbox) cleanup.push('打开锁盒取出内部线索，重新锁好并彻底打乱密码盘')
-  if (hasDoor) cleanup.push('铁门恢复开锁状态，密码打乱，挂"已清洁"标识')
+  if (hasDoorLock || hasIronDoor) cleanup.push('铁门恢复开锁状态，密码打乱，挂"已清洁"标识')
+  if (hasPadlock || hasCombLock) cleanup.push('挂锁/转盘锁打开复位，重新打乱密码')
   if (hasCandle) cleanup.push('逐一确认所有蜡烛完全熄灭，烛芯无余烬，摸一下确认不烫')
-  if (hasBlacklight) cleanup.push('取出紫外线灯电池，关闭开关，放回充电座')
+  if (hasLantern) cleanup.push('灯笼内部蜡烛/电子蜡熄灭，检查纸罩是否破损')
+  if (hasFlashlight || hasBlacklight) cleanup.push('取出电池，关闭开关，放回充电座')
+  if (hasTape || hasPhono) cleanup.push('磁带/唱片取出，放回原包装盒')
   if (hasConsole) cleanup.push('播音控制台断电，推子归零，屏幕关闭')
   if (hasMicrophone) cleanup.push('检查麦克风网罩内部纸条是否还在，不在的话补一张新的')
   if (hasHeadphone) cleanup.push('耳机线理顺绕好，放回原位')
@@ -670,6 +855,9 @@ function generateHostSteps(
   if (hasChandelier) cleanup.push('水晶吊灯的标记水晶重新确认位置')
   if (hasMirror) cleanup.push('镜子表面擦干净指纹和痕迹')
   if (hasTalisman) cleanup.push('符纸如有破损更换新的，放回固定位置')
+  if (hasCompass) cleanup.push('罗盘归位，内部磁铁检查是否还在原位')
+  if (hasMask) cleanup.push('面具重新挂回墙上，背面朝墙隐藏')
+  if (hasKey) cleanup.push('钥匙放回碟子，铜丝重新绕 1/0/4/5 圈')
   cleanup.push('所有道具回归初始位置，和标准初始状态照片逐一核对')
   cleanup.push('整理房间，通风散味，喷洒空气清新剂')
   cleanup.push('填写本场道具损耗检查表，破损物品登记')
@@ -681,24 +869,38 @@ function generateTitle(config: GeneratorConfig, availableProps: string[]): strin
   const hasRadio = availableProps.includes('radio')
   const hasClock = availableProps.includes('wall-clock')
   const hasMirror = availableProps.includes('mirror')
-  const hasDoor = availableProps.includes('iron-door')
+  const hasDoorLock = availableProps.includes('door-lock')
+  const hasIronDoor = availableProps.includes('iron-door')
+  const hasPadlock = availableProps.includes('padlock')
+  const hasCombLock = availableProps.includes('combination-lock')
+  const hasCandle = availableProps.includes('candle')
+  const hasLantern = availableProps.includes('lantern')
+  const hasBasement = hasDoorLock || hasIronDoor || hasPadlock
 
   const radioPrefixes = ['午夜', '诡异', '失踪的', '诅咒的', '死亡', '第七个', '调频104.5的']
   const noRadioPrefixes = ['上锁的', '第七个', '消失的', '死亡', '诅咒的', '诡异', '最后一扇']
+  const basementPrefixes = ['地下室的', '铁门后的', '三重锁的', '地下']
   const suffixes: Record<string, string[]> = {
     radio: ['频率', '电台', '广播', '最后一期节目'],
     clock: ['凌晨', '停摆的时钟', '那一刻'],
     mirror: ['镜中人', '倒影', '第七重'],
     door: ['铁门', '房间', '门后的秘密'],
+    lock: ['密码锁', '挂锁', '三重锁', '1045号房'],
+    light: ['摇曳烛光', '灯笼', '最后一盏'],
     default: ['日记', '房间', '仪式', '真相', '秘密']
   }
 
-  const prefix = getRandomItem(hasRadio ? radioPrefixes : noRadioPrefixes)
-  let suffixPool = suffixes.default
+  let prefix = getRandomItem(noRadioPrefixes)
+  if (hasRadio) prefix = getRandomItem(radioPrefixes)
+  if (hasBasement) prefix = getRandomItem([...basementPrefixes, ...noRadioPrefixes])
+
+  let suffixPool = [...suffixes.default]
   if (hasRadio) suffixPool = [...suffixPool, ...suffixes.radio]
   if (hasClock) suffixPool = [...suffixPool, ...suffixes.clock]
   if (hasMirror) suffixPool = [...suffixPool, ...suffixes.mirror]
-  if (hasDoor) suffixPool = [...suffixPool, ...suffixes.door]
+  if (hasDoorLock || hasIronDoor) suffixPool = [...suffixPool, ...suffixes.door]
+  if (hasPadlock || hasCombLock) suffixPool = [...suffixPool, ...suffixes.lock]
+  if (hasCandle || hasLantern) suffixPool = [...suffixPool, ...suffixes.light]
 
   const suffix = getRandomItem(suffixPool)
   return `${prefix}${suffix}`
@@ -711,11 +913,23 @@ function generateAnswer(
   const hasRadio = availableProps.includes('radio')
   const hasLockbox = availableProps.includes('lockbox')
   const hasClock = availableProps.includes('wall-clock')
-  const hasDoor = availableProps.includes('iron-door')
+  const hasDoorLock = availableProps.includes('door-lock')
+  const hasIronDoor = availableProps.includes('iron-door')
   const hasTalisman = availableProps.includes('talisman')
   const hasMirror = availableProps.includes('mirror')
   const hasBookshelf = availableProps.includes('bookshelf')
   const hasLetter = availableProps.includes('letter')
+  const hasCandle = availableProps.includes('candle')
+  const hasLantern = availableProps.includes('lantern')
+  const hasFlashlight = availableProps.includes('flashlight')
+  const hasBlacklight = availableProps.includes('blacklight')
+  const hasPadlock = availableProps.includes('padlock')
+  const hasCombLock = availableProps.includes('combination-lock')
+  const hasTape = availableProps.includes('tape-recorder')
+  const hasPhono = availableProps.includes('phonograph')
+  const hasCompass = availableProps.includes('compass')
+  const hasMask = availableProps.includes('mask')
+  const hasKey = availableProps.includes('key')
 
   const steps: string[] = []
   let coreNumber = ''
@@ -724,46 +938,117 @@ function generateAnswer(
     { check: hasLetter, label: '手写信件', number: '1、0、4、5' },
     { check: hasClock, label: '时钟', number: '10点45分 → 1 0 4 5' },
     { check: hasRadio, label: '收音机', number: '调频 104.5MHz → 1 0 4 5' },
-    { check: hasBookshelf, label: '书架异常书', number: '第10册、第04册、第45册 → 1 0 4 5' }
+    { check: hasBookshelf, label: '书架异常书', number: '第10册、第04册、第45册 → 1 0 4 5' },
+    { check: hasCandle && hasLantern, label: '蜡烛高度+灯笼投影', number: '高度1/0/4/5 + 竹骨架投影验证 → 1 0 4 5' },
+    { check: hasCandle && hasPadlock, label: '烛台刻字', number: '烛台底045 + 时钟前位1 → 1 0 4 5' },
+    { check: hasLantern && (hasDoorLock || hasIronDoor), label: '灯笼投影', number: '竹骨架在地面投下 1 0 4 5 四个数字' },
+    { check: hasFlashlight, label: '手电筒', number: '关灯后手电照墙显影 → 1 0 4 5' },
+    { check: hasBlacklight, label: '紫外线灯', number: '隐形墨水显蓝 → 1 0 4 5' },
+    { check: hasTape, label: '磁带录音机', number: '主播开头念 1-0-4-5 三遍' },
+    { check: hasPhono, label: '留声机', number: '章节号 第10首/第0章/第4节/第5段 → 1 0 4 5' },
+    { check: hasCompass, label: '罗盘', number: 'N-E-S-W 对应刻字 N1/E0/S4/W5 → 1 0 4 5' },
+    { check: hasMask, label: '面具背面', number: '汉字大写 壹〇肆伍 → 1 0 4 5' },
+    { check: hasKey, label: '铜钥匙（假线索但有数字）', number: '铜丝绕的圈数 1/0/4/5' }
   ]
   const validNumbers = numberSources.filter(n => n.check)
   if (validNumbers.length > 0) {
     coreNumber = '四个核心数字 1、0、4、5'
     validNumbers.forEach((s, i) => {
-      steps.push(`第${i + 1}步：从【${s.label}】读出线索——${s.number}`)
+      steps.push(`第${i + 1}步（数字来源）：从【${s.label}】读出线索——${s.number}`)
     })
+    if (validNumbers.length > 1) {
+      steps.push(`说明：以上 ${validNumbers.length} 个道具来源全部指向同一组数字（1045），可交叉验证确认无误`)
+    }
   } else if (hasTalisman && hasMirror) {
     coreNumber = '符纸 + 镜子 组合出的数字'
     steps.push('第1步：读出符纸上的红色符文')
     steps.push('第2步：站在镜子前倒着读符文内容')
   } else {
-    coreNumber = '房间里所有带数字的线索按顺序组合'
+    coreNumber = '房间里所有带数字的线索按发生顺序组合'
     steps.push('第1步：逐一收集房间内所有含数字的物品（日期、年份、页码等）')
     steps.push('第2步：按时间发生的先后顺序排列这些数字')
   }
 
   const actions: Array<{ check: boolean; label: string }> = [
+    { check: hasPadlock, label: `三位数字 0/4/5 + 前位 1 输入铜挂锁，打开对应柜子取下一步线索` },
+    { check: hasCombLock, label: `转盘锁 先顺3圈到 10 → 再逆2圈到 04 → 再顺到 45，打开木箱` },
     { check: hasLockbox, label: `将 ${coreNumber} 输入密码锁盒，打开取出下一件线索` },
-    { check: hasDoor, label: `将 ${coreNumber} 输入铁门密码锁，打开大门` },
-    { check: hasRadio, label: `将收音机调频旋钮拧至 ${coreNumber.replace(/、/g, '').slice(0, 1)}.${coreNumber.replace(/、/g, '').slice(1)} 对应频率，收听最终广播` }
+    { check: (hasDoorLock || hasIronDoor) && !hasPadlock && !hasCombLock, label: `将 ${coreNumber} 直接按顺序输入铁门电子密码锁，打开大门通关` },
+    { check: (hasDoorLock || hasIronDoor) && (hasPadlock || hasCombLock), label: `打开柜子/木箱拿到最终钥匙卡 → 将 ${coreNumber} 输入铁门电子密码锁通关` },
+    { check: hasRadio && !(hasDoorLock || hasIronDoor), label: `将收音机调频旋钮拧至 ${coreNumber.replace(/、/g, '').slice(0, 1)}.${coreNumber.replace(/、/g, '').slice(1)} 对应频率，收听最终广播完成本关` }
   ]
   const validActions = actions.filter(a => a.check)
   if (validActions.length > 0) {
     validActions.forEach((a, i) => {
-      steps.push(`第${validNumbers.length + i + 1}步：${a.label}`)
+      steps.push(`第${validNumbers.length + i + 1}步（执行）：${a.label}`)
     })
   } else {
     steps.push(`最后：将 ${coreNumber} 报给主持人，即可完成本关`)
   }
 
-  if (hasMirror) {
-    steps.push('彩蛋：完成后回头看一眼镜子——你会看到不该看到的东西')
+  if (hasMirror) steps.push('彩蛋：完成后回头看一眼镜子——你会看到不该看到的东西')
+  if (hasTalisman) steps.push('重要：谜题解开后，符纸必须立刻焚烧，不可带走')
+  if (hasCandle || hasLantern) steps.push('安全提醒：离场前确认所有明火完全熄灭，方可开门')
+  if (hasCombLock) steps.push('提示：转盘锁如果操作错误超过3次，必须全部回到 00 重新开始，主持人可在旁边监督')
+  return steps.join('\n\n')
+}
+
+function generateExecutionChecklist(config: GeneratorConfig, availableProps: string[], hostSteps: HostSteps): ExecutionChecklist {
+  const hasCandle = availableProps.includes('candle')
+  const hasLantern = availableProps.includes('lantern')
+  const hasDoorLock = availableProps.includes('door-lock')
+  const hasIronDoor = availableProps.includes('iron-door')
+  const hasPadlock = availableProps.includes('padlock')
+  const hasCombLock = availableProps.includes('combination-lock')
+  const hasLockbox = availableProps.includes('lockbox')
+  const hasBlacklight = availableProps.includes('blacklight')
+  const hasTape = availableProps.includes('tape-recorder')
+  const hasPhono = availableProps.includes('phonograph')
+  const hasHorror3 = config.horrorLevel >= 3
+
+  const setup: ExecutionChecklist['setup'] = [
+    { id: 's-room', item: '确认房间内无遗留杂物，场地清洁', done: false },
+    { id: 's-lights', item: '房间灯光调至预设亮度，测试所有灯光开关', done: false },
+    { id: 's-emergency', item: '确认应急出口通畅、灭火器位置、急救包可用', done: false },
+    { id: 's-comm', item: '主持人对讲机、耳机调试完毕，通讯畅通', done: false },
+    { id: 's-audio', item: '背景音/音效系统测试：开场白+杂音+铃声+脚步声', done: false },
+  ]
+  hostSteps.prep.forEach((step, i) => setup.push({ id: `sp-${i}`, item: `[道具] ${step}`, done: false }))
+
+  const control: ExecutionChecklist['control'] = [
+    { id: 'c-intro', item: '00:00 播放开场白（script.opening）', done: false },
+    { id: 'c-01min', item: '01:00 主动观察：玩家是否注意到核心道具（时钟/蜡烛/收音机/铁门）', done: false },
+    { id: 'c-03min', item: '03:00 节点：自动/手动触发一级提示（hint.level1）', done: false },
+    { id: 'c-05min', item: '05:00 人工评估：玩家是否卡关严重？决定提前给二级提示', done: false },
+    { id: 'c-06min', item: '06:00 节点：自动/手动触发二级提示（hint.level2）+ 门外摇铃1次', done: false },
+    { id: 'c-08min', item: '08:00 恐怖升级：根据恐怖等级主动增加一次灯光闪烁/脚步声音效', done: false },
+    { id: 'c-10min', item: '10:00 节点：自动/手动触发三级提示（hint.level3）', done: false },
+    { id: 'c-solve', item: '解谜瞬间：玩家解开核心谜题时给出正向反馈', done: false },
+    { id: 'c-ending', item: '播放结尾台词（script.ending）', done: false },
+  ]
+  hostSteps.during.forEach((step, i) => control.push({ id: `cd-${i}`, item: `[主持] ${step}`, done: false }))
+
+  const reset: ExecutionChecklist['reset'] = [
+    { id: 'r-lights', item: '打开全部房间灯光，通风散味', done: false },
+    { id: 'r-playeritems', item: '检查玩家随身物品：确认未携带任何道具离场', done: false },
+  ]
+  hostSteps.cleanup.forEach((step, i) => reset.push({ id: `rc-${i}`, item: step, done: false }))
+
+  const safety: ExecutionChecklist['safety'] = [
+    { id: 'f-flame', item: hasCandle || hasLantern ? '🔥 所有蜡烛/明火100%熄灭！（烛芯摸一下确认不烫）' : '本场无明火，跳过', done: false },
+    { id: 'f-lock', item: (hasDoorLock || hasIronDoor) ? '🔓 铁门必须处于开锁状态，挂"已清洁"标识' : '本场无铁门，跳过', done: false },
+    { id: 'f-battery', item: (hasBlacklight || hasTape || hasPhono) ? '🔋 取出所有电池类道具的电池，防止漏液' : '本场无电池道具，跳过', done: false },
+    { id: 'f-check', item: '🧍 工作人员查看房间每个角落，确认玩家无遗漏物品', done: false },
+    { id: 'f-report', item: '📋 填写本场损耗登记表（破损道具/异常情况）', done: false },
+  ]
+  if (hasHorror3) {
+    safety.push({ id: 'f-decompression', item: '🧘 重恐结束后留玩家在休息区缓神5分钟，提供水，确认情绪稳定', done: false })
   }
-  if (hasTalisman) {
-    steps.push('重要：谜题解开后，符纸必须立刻焚烧，不可带走')
+  if ((hasPadlock || hasCombLock || hasLockbox)) {
+    safety.splice(2, 0, { id: 'f-resetlocks', item: '🔒 所有锁具密码打乱复位（挂锁/转盘锁/锁盒），准备下一场', done: false })
   }
 
-  return steps.join('\n\n')
+  return { setup, control, reset, safety }
 }
 
 export function generatePuzzle(
@@ -787,6 +1072,7 @@ export function generatePuzzle(
   const hostSteps = generateHostSteps(config, availableProps)
   const title = generateTitle(config, availableProps)
   const answer = generateAnswer(config, availableProps)
+  const executionChecklist = generateExecutionChecklist(config, availableProps, hostSteps)
 
   const themeInfo = themes.find(t => t.id === config.theme)
 
@@ -798,20 +1084,18 @@ export function generatePuzzle(
     horrorLevel: config.horrorLevel,
     estimatedTime: 20 + config.difficulty * 10,
     props: availableProps,
-    playerCount: {
-      min: Math.max(1, config.playerCount - 2),
-      max: config.playerCount + 2
-    },
+    playerCount: { min: Math.max(1, config.playerCount - 2), max: config.playerCount + 2 },
     script,
     hostSteps,
     playerCards,
     hints,
     answer,
     adjustments: adjustments.length > 0 ? adjustments : undefined,
+    executionChecklist,
     basedOnHistory: adjustments.length > 0,
     createdAt: Date.now()
   }
 
-  console.log('[PuzzleGenerator] 谜题生成完成:', puzzle.title, '使用道具数:', availableProps.length, '调整数:', adjustments.length)
+  console.log('[PuzzleGenerator] 谜题生成完成:', puzzle.title, '使用道具数:', availableProps.length, '玩家卡:', playerCards.length, '调整数:', adjustments.length)
   return { puzzle, adjustments }
 }
