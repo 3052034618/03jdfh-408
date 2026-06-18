@@ -1,0 +1,80 @@
+@use '@/styles/variables.scss' as *;
+
+.darkButton {
+  @include button-reset;
+  border-radius: $radius-button;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+  position: relative;
+  overflow: hidden;
+
+  &:active:not(.disabled) {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  &.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &.block {
+    width: 100%;
+  }
+
+  &.sm {
+    height: $button-height-sm;
+    padding: 0 $spacing-lg;
+    font-size: $font-size-sm;
+  }
+
+  &.md {
+    height: $button-height-md;
+    padding: 0 $spacing-xl;
+    font-size: $font-size-md;
+  }
+
+  &.lg {
+    height: $button-height-lg;
+    padding: 0 $spacing-xl;
+    font-size: $font-size-lg;
+  }
+}
+
+.buttonText {
+  white-space: nowrap;
+}
+
+.primary {
+  background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+  color: $color-primary-dark;
+
+  &.glow {
+    box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.4);
+  }
+}
+
+.secondary {
+  background: $color-bg-card-light;
+  color: $color-text-primary;
+  border: 1px solid $color-border;
+
+  &.glow {
+    box-shadow: 0 0 20rpx rgba(255, 255, 255, 0.1);
+  }
+}
+
+.danger {
+  background: linear-gradient(135deg, $color-horror-red 0%, #c73659 100%);
+  color: $color-text-white;
+
+  &.glow {
+    box-shadow: 0 0 20rpx rgba(233, 69, 96, 0.4);
+  }
+}
+
+.ghost {
+  background: transparent;
+  color: $color-neon-green;
+  border: 1px solid $color-neon-green;
+}

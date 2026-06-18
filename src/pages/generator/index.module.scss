@@ -1,0 +1,260 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding: $spacing-lg $page-padding $spacing-xl;
+  padding-bottom: 180rpx;
+}
+
+.pageHeader {
+  text-align: center;
+  margin-bottom: $spacing-xl;
+  padding-top: $spacing-lg;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-neon-green;
+  text-shadow: 0 0 20rpx rgba(0, 255, 136, 0.5);
+  margin-bottom: $spacing-sm;
+  letter-spacing: 4rpx;
+}
+
+.subtitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  letter-spacing: 2rpx;
+}
+
+.section {
+  margin-bottom: $spacing-xl;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 32rpx;
+    background: $color-neon-green;
+    border-radius: 3rpx;
+    box-shadow: 0 0 10rpx rgba(0, 255, 136, 0.5);
+  }
+}
+
+.roomGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+}
+
+.roomCard {
+  background: $color-bg-card;
+  border: 2px solid $color-border;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  transition: all $transition-base;
+  position: relative;
+  overflow: hidden;
+
+  &.selected {
+    border-color: $color-neon-green;
+    box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.2);
+    background: rgba(0, 255, 136, 0.05);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.roomName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.roomDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  line-height: 1.4;
+}
+
+.propSection {
+  margin-bottom: $spacing-lg;
+}
+
+.propCategoryTitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  font-weight: $font-weight-medium;
+}
+
+.propList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.propItem {
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+
+  &.selected {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: $color-neon-green;
+    color: $color-neon-green;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.sliderSection {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+  border: 1px solid $color-border;
+}
+
+.sliderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.sliderLabel {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+}
+
+.sliderValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-neon-green;
+}
+
+.themeList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.themeItem {
+  flex: 1;
+  min-width: 45%;
+  padding: $spacing-md;
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  transition: all $transition-base;
+
+  &.selected {
+    border-color: $color-neon-green;
+    background: rgba(0, 255, 136, 0.05);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.themeName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+}
+
+.themeDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: $spacing-lg $page-padding;
+  padding-bottom: calc(#{$spacing-lg} + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, $color-bg-page 30%);
+  z-index: 100;
+}
+
+.generateButton {
+  width: 100%;
+  height: $button-height-lg;
+  background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 24rpx rgba(0, 255, 136, 0.4);
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.generateText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-primary-dark;
+  letter-spacing: 4rpx;
+}
+
+.levelDots {
+  display: flex;
+  gap: $spacing-xs;
+  align-items: center;
+}
+
+.levelDot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  background: $color-bg-hover;
+  border: 2rpx solid $color-border;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-neon-green;
+    border-color: $color-neon-green;
+    box-shadow: 0 0 10rpx rgba(0, 255, 136, 0.5);
+  }
+}
+
+.levelLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-left: $spacing-sm;
+}
+
+.dangerLevel .levelDot.active {
+  background: $color-horror-red;
+  border-color: $color-horror-red;
+  box-shadow: 0 0 10rpx rgba(233, 69, 96, 0.5);
+}

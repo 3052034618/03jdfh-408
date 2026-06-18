@@ -1,0 +1,323 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding: $spacing-lg $page-padding;
+  padding-bottom: 180rpx;
+}
+
+.formSection {
+  margin-bottom: $spacing-xl;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 32rpx;
+    background: $color-neon-green;
+    border-radius: 3rpx;
+    box-shadow: 0 0 10rpx rgba(0, 255, 136, 0.5);
+  }
+}
+
+.formCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  border: 1px solid $color-border;
+}
+
+.formItem {
+  margin-bottom: $spacing-lg;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  height: 80rpx;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  padding: 0 $spacing-md;
+  color: $color-text-primary;
+  font-size: $font-size-md;
+
+  &::placeholder {
+    color: $color-text-tertiary;
+  }
+}
+
+.formTextarea {
+  width: 100%;
+  min-height: 160rpx;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  color: $color-text-primary;
+  font-size: $font-size-md;
+  line-height: 1.6;
+
+  &::placeholder {
+    color: $color-text-tertiary;
+  }
+}
+
+.counterInput {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+}
+
+.counterBtn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: $color-bg-hover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-xl;
+  color: $color-text-secondary;
+  transition: all $transition-fast;
+
+  &:active {
+    background: $color-neon-green;
+    color: $color-primary-dark;
+  }
+}
+
+.counterValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-neon-green;
+  min-width: 80rpx;
+  text-align: center;
+}
+
+.ratingStars {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.star {
+  font-size: 56rpx;
+  color: $color-text-tertiary;
+  transition: all $transition-fast;
+
+  &.filled {
+    color: #ffaa00;
+    text-shadow: 0 0 10rpx rgba(255, 170, 0, 0.5);
+  }
+
+  &:active {
+    transform: scale(1.2);
+  }
+}
+
+.hintSelector {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.hintOption {
+  flex: 1;
+  padding: $spacing-md;
+  background: rgba(0, 0, 0, 0.2);
+  border: 2px solid $color-border;
+  border-radius: $radius-md;
+  text-align: center;
+  transition: all $transition-fast;
+
+  &.selected {
+    border-color: $color-neon-green;
+    background: rgba(0, 255, 136, 0.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.hintOptionLevel {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+
+  .selected & {
+    color: $color-neon-green;
+  }
+}
+
+.hintOptionDesc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.tagInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.tagItem {
+  padding: $spacing-xs $spacing-md;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-neon-green;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.tagRemove {
+  font-size: $font-size-md;
+  line-height: 1;
+}
+
+.suggestedTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  margin-top: $spacing-sm;
+}
+
+.suggestedTag {
+  padding: $spacing-xs $spacing-sm;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed $color-border;
+  border-radius: $radius-button;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+
+  &:active {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: $color-neon-green;
+    color: $color-neon-green;
+  }
+}
+
+.puzzleInfo {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  border: 1px solid $color-border;
+  margin-bottom: $spacing-xl;
+}
+
+.puzzleTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-neon-green;
+  margin-bottom: $spacing-xs;
+}
+
+.puzzleMeta {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: $spacing-lg $page-padding;
+  padding-bottom: calc(#{$spacing-lg} + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, $color-bg-page 30%);
+  z-index: 100;
+}
+
+.submitBtn {
+  width: 100%;
+  height: $button-height-lg;
+  background: linear-gradient(135deg, $color-neon-green 0%, #00cc6a 100%);
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 24rpx rgba(0, 255, 136, 0.4);
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.submitText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-primary-dark;
+  letter-spacing: 4rpx;
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.timeInput {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+}
+
+.timeNum {
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  color: $color-neon-green;
+  font-family: 'Courier New', monospace;
+}
+
+.timeUnit {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.quickTimes {
+  display: flex;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+  margin-top: $spacing-sm;
+}
+
+.quickTimeBtn {
+  padding: $spacing-xs $spacing-md;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+
+  &:active {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: $color-neon-green;
+    color: $color-neon-green;
+  }
+}

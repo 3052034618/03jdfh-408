@@ -1,0 +1,113 @@
+@use '@/styles/variables.scss' as *;
+
+.radioCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  border: 1px solid $color-border;
+  position: relative;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2rpx;
+    background: linear-gradient(90deg, transparent, $color-neon-green, transparent);
+    opacity: 0.5;
+  }
+
+  &.clickable {
+    cursor: pointer;
+
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+  }
+
+  &.glow {
+    border-color: $color-border-glow;
+    box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.15);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.radioIndicator {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  background: rgba(0, 0, 0, 0.3);
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-sm;
+}
+
+.indicatorLight {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: $color-neon-green;
+  box-shadow: 0 0 8rpx $color-neon-green;
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.indicatorText {
+  font-size: $font-size-xs;
+  color: $color-neon-green;
+  font-weight: $font-weight-medium;
+  letter-spacing: 1rpx;
+}
+
+.cardTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  flex: 1;
+}
+
+.cardSubtitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-md;
+  display: block;
+}
+
+.cardContent {
+  color: $color-text-primary;
+}
+
+.cardFooter {
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1px dashed $color-border;
+}
+
+.staticLine {
+  height: 20rpx;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 2rpx,
+    rgba(0, 255, 136, 0.1) 2rpx,
+    rgba(0, 255, 136, 0.1) 4rpx
+  );
+  border-radius: 2rpx;
+}
